@@ -1,0 +1,31 @@
+LaminaFS
+========
+
+== Description
+LaminaFS is a simple, portable C/C++ filesystem abstraction layer designed
+to have a modern API while offering good performance and extensibility.
+
+== License
+LaminaFS is licensed under the MIT License. See the file LICENSE for more information.
+
+== Requirements
+* A C++ compiler supporting the C++11 standard
+
+== Building
+It's not necessary to build this library separately; the source can be directly
+integrated into other software just by copying and pasting the contents of the
+src/ directory and adding to the source tree.
+
+Building this library and tests, requires a copy of link:https://github.com/blajzer/dib[dib].
+After acquiring dib, the command to build is just +dib+. This will build both the
+library and the test suite. I may also provide a simple Makefile in the future.
+
+link:http://doxygen.org[Doxygen] is required to build the documentation. Just
+run it in the root directory to build the docs.
+
+== Usage
+LaminaFS can be used through one of two include files:
+[source,cxx]
+#include <laminaFS.h> // C++ interface
+#include <laminaFS_c.h> // C interface
+

@@ -63,20 +63,27 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 	return result;
 }
 
-void FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath) {
+ErrorCode FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath) {
+	ErrorCode result = LFS_OK;
 	Mount m;
 
-	size_t mountLen = strlen(mountPoint);
-	m._prefix = new char[mountLen + 1];
-	m._prefixLen = mountLen;
-	strcpy(m._prefix, mountPoint);
-
 	DeviceInterface *interface = &(_interfaces[deviceType]);
-	m._device = interface->_create(devicePath, virtualPath);
+	result = interface->_create(devicePath, virtualPath, &m._device);
 	m._interface = interface;
 
-	_mounts.push_back(m);
-	LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
+	if (result == LFS_OK && m._device) {
+		size_t mountLen = strlen(mountPoint);
+		m._prefix = new char[mountLen + 1];
+		m._prefixLen = mountLen;
+		strcpy(m._prefix, mountPoint);
+
+		_mounts.push_back(m);
+		LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
+	} else {
+		LOG("unable to mount device %u:%s on %s\n", deviceType, devicePath, mountPoint);
+	}
+	
+	return result;
 }
 
 ErrorCode FileContext::openFile(const char *path, FileMode &fileMode, File **file) {
@@ -93,7 +100,7 @@ ErrorCode FileContext::openFile(const char *path, FileMode &fileMode, File **fil
 			LOG("  found matching mount %s\n", it->_prefix);
 			
 			FileHandle fileHandle = nullptr;
-			ErrorCode res = it->_interface->_openFile(it->_device, path + it->_prefixLen, &fileMode, &fileHandle);
+			ErrorCode res = it->_interface->_openFile(it->_device, it->_prefixLen == 1 ? path : path + it->_prefixLen, &fileMode, &fileHandle);
 			result = res;
 			if (res == LFS_NOT_FOUND) {
 				continue;
@@ -108,6 +115,8 @@ ErrorCode FileContext::openFile(const char *path, FileMode &fileMode, File **fil
 	
 	if (result == LFS_OK) {
 		*file = f;
+	} else {
+		*file = nullptr;
 	}
 	
 	return result;

@@ -16,7 +16,7 @@ typedef int (*lfs_log_func_t)(const char *, ...);
 struct lfs_file_t;
 
 struct lfs_device_interface_t {
-	typedef void *(*create_func_t)(const char *, bool);
+	typedef lfs_error_code_t (*create_func_t)(const char *, bool, void **);
 	typedef void (*destroy_func_t)(void*);
 
 	typedef lfs_error_code_t (*open_file_func_t)(void *, const char *, lfs_file_mode_t *, lfs_file_handle_t *);
@@ -63,15 +63,15 @@ extern "C" int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_dev
 //! @param mountPoint the virtual path to mount this device to
 //! @param devicePath the path to pass into the device
 //! @param virtualPath whether or not the devicePath refers to a virtual path or "real" path
-void lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath);
+extern "C" lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath);
 
 //! Sets the log function.
 //! @param ctx the context
 //! @param func the logging function
-void lfs_set_log_func(lfs_file_context_t ctx, lfs_log_func_t func);
+extern "C" void lfs_set_log_func(lfs_file_context_t ctx, lfs_log_func_t func);
 
 //! Gets the log function.
 //! @param ctx the context
 //! @return the logging function
-lfs_log_func_t lfs_get_log_func(lfs_file_context_t ctx);
+extern "C" lfs_log_func_t lfs_get_log_func(lfs_file_context_t ctx);
 

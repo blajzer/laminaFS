@@ -11,10 +11,11 @@ namespace laminaFS {
 
 class DirectoryDevice {
 public:
-	DirectoryDevice();
+	DirectoryDevice() = delete;
+	DirectoryDevice(const char *path);
 	~DirectoryDevice();
 
-	static void *create(const char *path, bool virtualPath);
+	static ErrorCode create(const char *path, bool virtualPath, void **device);
 	static void destroy(void *device);
 
 	static ErrorCode openFile(void *device, const char *filePath, FileMode *fileMode, FileHandle *file);
@@ -26,6 +27,9 @@ public:
 	static size_t writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToRead);
 	static ErrorCode deleteFile(void *device, const char *filePath);
 
+private:
+	char *_devicePath = nullptr;
+	uint32_t _pathLen = 0;
 };
 
 }

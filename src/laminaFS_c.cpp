@@ -24,6 +24,14 @@ lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, c
 	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath, virtualPath);
 }
 
+lfs_error_code_t lfs_open_file(lfs_file_context_t ctx, const char *path, lfs_file_mode_t *fileMode, lfs_file_t **file) {
+	return CTX(ctx)->openFile(path, *fileMode, file);
+}
+
+lfs_error_code_t lfs_close_file(lfs_file_context_t ctx, lfs_file_t *file) {
+	return CTX(ctx)->closeFile(file);
+}
+
 void lfs_set_log_func(lfs_file_context_t ctx, lfs_log_func_t func) {
 	CTX(ctx)->setLogFunc(func);
 }

@@ -3,25 +3,51 @@
 
 #include "FileContext.h"
 
+#include "device/Directory.h"
+
+#include <cstring>
+
 using namespace laminaFS;
 
-uint32_t FileContext::kDirectoryDeviceIndex = 0;
+#define LOG(MSG,...) if (_log) { _log(MSG, ##__VA_ARGS__); }
 
-struct File {
+// TODO: think about this some more
+struct lfs_file_t {
 	FileHandle _file;
-	void *_interface;
-	uint32_t _openCount;
+	FileContext::Mount *_mount;
 };
 
 FileContext::FileContext() {
+	DeviceInterface i;
+	i._create = &DirectoryDevice::create;
+	i._destroy = &DirectoryDevice::destroy;
+	i._openFile = &DirectoryDevice::openFile;
+	i._closeFile = &DirectoryDevice::closeFile;
+	i._fileExists = &DirectoryDevice::fileExists;
+	i._fileSize = &DirectoryDevice::fileSize;
+	i._readFile = &DirectoryDevice::readFile;
+	i._writeFile = &DirectoryDevice::writeFile;
+	i._deleteFile = &DirectoryDevice::deleteFile;
+
+	registerDeviceInterface(i);
 }
 
 FileContext::~FileContext() {
+	for (File *f : _files) {
+		Mount *m = f->_mount;
+		m->_interface->_closeFile(m->_device, f->_file);
+		delete f;
+	}
+
+	for (Mount &m : _mounts) {
+		delete [] m._prefix;
+		m._interface->_destroy(m._device);
+	}
 }
 
 int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 	int32_t result = -1;
-	
+
 	if (interface._create != nullptr &&
 		interface._destroy != nullptr &&
 		interface._openFile != nullptr &&
@@ -33,6 +59,62 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 		result = _interfaces.size();
 		_interfaces.push_back(interface);	
 	}
+
+	return result;
+}
+
+void FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath) {
+	Mount m;
+
+	size_t mountLen = strlen(mountPoint);
+	m._prefix = new char[mountLen + 1];
+	m._prefixLen = mountLen;
+	strcpy(m._prefix, mountPoint);
+
+	DeviceInterface *interface = &(_interfaces[deviceType]);
+	m._device = interface->_create(devicePath, virtualPath);
+	m._interface = interface;
+
+	_mounts.push_back(m);
+	LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
+}
+
+ErrorCode FileContext::openFile(const char *path, FileMode &fileMode, File **file) {
+	ErrorCode result = LFS_NOT_FOUND;
+
+	LOG("searching for file %s\n", path);
+
+	File *f = new File();
+
+	// search mounts from the end
+	for (auto it = _mounts.rbegin(); it != _mounts.rend(); ++it) {
+		const char *foundMount = strstr(path, it->_prefix);
+		if (foundMount && foundMount == path && (path[it->_prefixLen] == '/' || it->_prefixLen == 1)) {
+			LOG("  found matching mount %s\n", it->_prefix);
+			
+			FileHandle fileHandle = nullptr;
+			ErrorCode res = it->_interface->_openFile(it->_device, path + it->_prefixLen, &fileMode, &fileHandle);
+			result = res;
+			if (res == LFS_NOT_FOUND) {
+				continue;
+			} else {
+				LOG("  found file\n");
+				f->_file = fileHandle;
+				f->_mount = &(*it);
+				break;
+			}
+		}
+	}
+	
+	if (result == LFS_OK) {
+		*file = f;
+	}
 	
 	return result;
 }
+
+ErrorCode FileContext::closeFile(File *file) {
+	delete file;
+	return LFS_NOT_FOUND;
+}
+

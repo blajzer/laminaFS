@@ -9,7 +9,7 @@ to have a modern API while offering good performance and extensibility.
 LaminaFS is licensed under the MIT License. See the file LICENSE for more information.
 
 == Requirements
-* A C++ compiler supporting the C++11 standard
+* A C\++ compiler supporting the C++11 standard
 
 == Building
 It's not necessary to build this library separately; the source can be directly

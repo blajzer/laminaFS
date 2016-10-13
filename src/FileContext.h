@@ -8,14 +8,13 @@
 
 #include "shared_types.h"
 
-struct lfs_file_t;
-
 namespace laminaFS {
 
 typedef void* FileHandle;
 typedef lfs_file_t File;
 typedef lfs_file_mode_t FileMode;
 typedef lfs_error_code_t ErrorCode;
+typedef lfs_work_item_t WorkItem;
 
 //! FileContext is the "main" object in LaminaFS. It handles management of files,
 //! mounts, and the backend processing that occurs.
@@ -80,6 +79,18 @@ public:
 	//! @param file the handle to the file
 	//! @return the return code, 0 on success
 	ErrorCode closeFile(File *file);
+	
+	//! Creates a WorkItem.
+	//! @return a pointer to the newly created and initialized WorkItem.
+	WorkItem *createWorkItem();
+	
+	//! Releases a WorkItem.
+	//! @param workItem the WorkItem to release.
+	void releaseWorkItem(WorkItem *workItem);
+	
+	//! Submits a WorkItem for processing.
+	//! @param workItem the WorkItem to submit.
+	void submitWorkItem(WorkItem *workItem);
 
 	//! Sets the log function.
 	//! @param func the logging function

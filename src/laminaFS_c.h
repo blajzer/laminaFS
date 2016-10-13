@@ -7,14 +7,18 @@
 
 #include "shared_types.h"
 
+#ifdef __cplusplus
+#define LFS_C_API extern "C"
+#else
+#define LFS_C_API 
+#endif
+
 // typedefs
 struct lfs_file_context_t { void *_value; };
 typedef void* lfs_file_handle_t;
 typedef int (*lfs_log_func_t)(const char *, ...);
 
 // structs
-struct lfs_file_t;
-
 struct lfs_device_interface_t {
 	typedef lfs_error_code_t (*create_func_t)(const char *, bool, void **);
 	typedef void (*destroy_func_t)(void*);
@@ -46,16 +50,16 @@ struct lfs_device_interface_t {
 
 //! Creates a file context.
 //! @return the context
-extern "C" lfs_file_context_t lfs_file_context_create();
+LFS_C_API lfs_file_context_t lfs_file_context_create();
 
 //! Destroys a file context
 //! @param ctx the context to destroy
-extern "C" void lfs_file_context_destroy(lfs_file_context_t ctx);
+LFS_C_API void lfs_file_context_destroy(lfs_file_context_t ctx);
 
 //! Registers a device interface with a context
 //! @param ctx the context
 //! @param interface the device interface to register
-extern "C" int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_device_interface_t *interface);
+LFS_C_API int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_device_interface_t *interface);
 
 //! Creates a mount on a context
 //! @param ctx the context
@@ -63,7 +67,7 @@ extern "C" int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_dev
 //! @param mountPoint the virtual path to mount this device to
 //! @param devicePath the path to pass into the device
 //! @param virtualPath whether or not the devicePath refers to a virtual path or "real" path
-extern "C" lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath);
+LFS_C_API lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath);
 
 //! Open a file
 //! @param ctx the context
@@ -71,21 +75,21 @@ extern "C" lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t de
 //! @param fileMode the mode to open the file in, will be adjusted based on returned file mount capabilities
 //! @param file outval which will contain the file
 //! @return the return code, 0 on success
-extern "C" lfs_error_code_t lfs_open_file(lfs_file_context_t ctx, const char *path, lfs_file_mode_t *fileMode, lfs_file_t **file);
+LFS_C_API lfs_error_code_t lfs_open_file(lfs_file_context_t ctx, const char *path, lfs_file_mode_t *fileMode, lfs_file_t **file);
 
 //! Close a file.
 //! @param ctx the context
 //! @param file the handle to the file
 //! @return the return code, 0 on success
-extern "C" lfs_error_code_t lfs_close_file(lfs_file_context_t ctx, lfs_file_t *file);
+LFS_C_API lfs_error_code_t lfs_close_file(lfs_file_context_t ctx, lfs_file_t *file);
 
 //! Sets the log function.
 //! @param ctx the context
 //! @param func the logging function
-extern "C" void lfs_set_log_func(lfs_file_context_t ctx, lfs_log_func_t func);
+LFS_C_API void lfs_set_log_func(lfs_file_context_t ctx, lfs_log_func_t func);
 
 //! Gets the log function.
 //! @param ctx the context
 //! @return the logging function
-extern "C" lfs_log_func_t lfs_get_log_func(lfs_file_context_t ctx);
+LFS_C_API lfs_log_func_t lfs_get_log_func(lfs_file_context_t ctx);
 

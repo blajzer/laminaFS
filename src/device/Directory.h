@@ -15,7 +15,7 @@ public:
 	DirectoryDevice(const char *path);
 	~DirectoryDevice();
 
-	static ErrorCode create(const char *path, bool virtualPath, void **device);
+	static ErrorCode create(const char *path, void **device);
 	static void destroy(void *device);
 
 	static ErrorCode openFile(void *device, const char *filePath, FileMode *fileMode, FileHandle *file);

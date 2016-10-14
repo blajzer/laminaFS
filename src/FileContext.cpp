@@ -63,12 +63,12 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 	return result;
 }
 
-ErrorCode FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath) {
+ErrorCode FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath) {
 	ErrorCode result = LFS_OK;
 	Mount m;
 
 	DeviceInterface *interface = &(_interfaces[deviceType]);
-	result = interface->_create(devicePath, virtualPath, &m._device);
+	result = interface->_create(devicePath, &m._device);
 	m._interface = interface;
 
 	if (result == LFS_OK && m._device) {

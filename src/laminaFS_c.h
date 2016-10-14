@@ -20,7 +20,7 @@ typedef int (*lfs_log_func_t)(const char *, ...);
 
 // structs
 struct lfs_device_interface_t {
-	typedef lfs_error_code_t (*create_func_t)(const char *, bool, void **);
+	typedef lfs_error_code_t (*create_func_t)(const char *, void **);
 	typedef void (*destroy_func_t)(void*);
 
 	typedef lfs_error_code_t (*open_file_func_t)(void *, const char *, lfs_file_mode_t *, lfs_file_handle_t *);
@@ -66,8 +66,7 @@ LFS_C_API int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_devi
 //! @param deviceType the type index of the device to create the mount with
 //! @param mountPoint the virtual path to mount this device to
 //! @param devicePath the path to pass into the device
-//! @param virtualPath whether or not the devicePath refers to a virtual path or "real" path
-LFS_C_API lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath);
+LFS_C_API lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath);
 
 //! Open a file
 //! @param ctx the context

@@ -10,9 +10,8 @@ int main(int argc, char *argv[]) {
 	FileContext ctx;
 	ctx.setLogFunc(printf);
 
-	ctx.createMount(0, "/", "testData/testroot", false);
-	ctx.createMount(0, "/four", "testData/testroot2", false);
-	ctx.createMount(0, "/failmount", "testData/testroot2", true);
+	ctx.createMount(0, "/", "testData/testroot");
+	ctx.createMount(0, "/four", "testData/testroot2");
 
 	File *f;
 	FileMode fileMode = LFS_FM_READ;

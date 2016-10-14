@@ -19,10 +19,10 @@ DirectoryDevice::~DirectoryDevice() {
 	delete [] _devicePath;
 }
 
-ErrorCode DirectoryDevice::create(const char *path, bool virtualPath, void **device) {
+ErrorCode DirectoryDevice::create(const char *path, void **device) {
 	// TODO: verify directory exists, set return code accordingly
-	ErrorCode returnCode = virtualPath ? LFS_UNSUPPORTED : LFS_OK;
-	*device = virtualPath ? nullptr : new DirectoryDevice(path);
+	ErrorCode returnCode = LFS_OK;
+	*device = new DirectoryDevice(path);
 
 	return returnCode;
 }

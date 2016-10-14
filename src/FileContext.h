@@ -28,7 +28,7 @@ public:
 	//! DeviceInterface is the extensibility mechanism for adding new types of
 	//! devices. Fill out one of these and then call registerDeviceInterface().
 	struct DeviceInterface {
-		typedef ErrorCode (*CreateFunc)(const char *, bool, void **);
+		typedef ErrorCode (*CreateFunc)(const char *, void **);
 		typedef void (*DestroyFunc)(void*);
 
 		typedef ErrorCode (*OpenFileFunc)(void *, const char *, FileMode *, FileHandle *);
@@ -64,9 +64,8 @@ public:
 	//! @param deviceType the device type, as returned by registerDeviceInterface()
 	//! @param mountPoint the virtual path to mount this device to
 	//! @param devicePath the path to pass into the device
-	//! @param virtualPath whether or not the devicePath refers to a virtual path or "real" path
 	//! @return the return code, 0 on success
-	ErrorCode createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, bool virtualPath);
+	ErrorCode createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath);
 
 	//! Open a file
 	//! @param path the virtual path to the file

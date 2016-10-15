@@ -17,6 +17,17 @@ int main(int argc, char *argv[]) {
 	FileMode fileMode = LFS_FM_READ;
 	if (ctx.openFile("/one/random.txt", fileMode, &f) != 0) {
 		printf("Couldn't open file\n");
+	} else {
+		WorkItem *wi = ctx.createWorkItem();
+		wi->_operation = LFS_OP_SIZE;
+		wi->_file = f;
+
+		ctx.submitWorkItem(wi);
+		ctx.waitForWorkItem(wi);
+
+		printf("file size is: %llu bytes\n", wi->_operationBytes);
+		
+		ctx.releaseWorkItem(wi);
 	}
 	ctx.closeFile(f);
 

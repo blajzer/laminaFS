@@ -2,11 +2,14 @@
 // LaminaFS is Copyright (c) 2016 Brett Lajzer
 // See LICENSE for license information.
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <thread>
 
 #include "shared_types.h"
+#include "util/RingBuffer.h"
 
 namespace laminaFS {
 
@@ -20,7 +23,7 @@ typedef lfs_work_item_t WorkItem;
 //! mounts, and the backend processing that occurs.
 class FileContext {
 public:
-	FileContext();
+	FileContext(uint64_t maxWorkItems = 128);
 	~FileContext();
 
 	typedef int (*LogFunc)(const char *, ...);
@@ -33,7 +36,7 @@ public:
 
 		typedef ErrorCode (*OpenFileFunc)(void *, const char *, FileMode *, FileHandle *);
 		typedef void (*CloseFileFunc)(void *, FileHandle);
-		typedef bool (*FileExistsFunc)(void *, const char *);
+		typedef bool (*FileExistsFunc)(void *, const char *); // TODO: rethink this
 		typedef size_t (*FileSizeFunc)(void *, FileHandle);
 		typedef size_t (*ReadFileFunc)(void *, FileHandle, size_t, uint8_t *, size_t);
 		
@@ -90,6 +93,10 @@ public:
 	//! Submits a WorkItem for processing.
 	//! @param workItem the WorkItem to submit.
 	void submitWorkItem(WorkItem *workItem);
+	
+	//! Waits for a WorkItem to finish processing.
+	//! @param workItem the WorkItem to wait for
+	void waitForWorkItem(WorkItem *workItem);
 
 	//! Sets the log function.
 	//! @param func the logging function
@@ -110,11 +117,17 @@ private:
 		DeviceInterface *_interface;
 		uint32_t _prefixLen;
 	};
+	
+	static void processingFunc(FileContext *ctx);
 
 	std::vector<DeviceInterface> _interfaces;
 	std::vector<Mount> _mounts;
 	std::vector<File*> _files;
+
+	util::RingBuffer<WorkItem*> _workItemQueue;
+	std::thread _processingThread;
 	LogFunc _log = nullptr;
+	std::atomic<bool> _processing;
 };
 
 }

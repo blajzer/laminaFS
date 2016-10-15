@@ -82,7 +82,16 @@ bool DirectoryDevice::fileExists(void *device, const char *filePath) {
 }
 
 size_t DirectoryDevice::fileSize(void *device, FileHandle file) {
-	return 0;
+	size_t fileSize = 0;
+	size_t lastPos = 0;
+	FILE *handle = reinterpret_cast<FILE*>(file);
+
+	lastPos = ftell(handle);
+	if(fseek(handle, 0L, SEEK_END) == 0) {
+		fileSize = ftell(handle);
+		fseek(handle, lastPos, SEEK_SET);
+	}
+	return fileSize;
 }
 
 size_t DirectoryDevice::readFile(void *device, FileHandle file, size_t offset, uint8_t *buffer, size_t bytesToRead) {

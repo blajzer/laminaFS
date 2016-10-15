@@ -17,7 +17,9 @@ struct lfs_file_t {
 	FileContext::Mount *_mount;
 };
 
-FileContext::FileContext() {
+FileContext::FileContext(uint64_t maxWorkItems)
+: _workItemQueue(maxWorkItems)
+{
 	DeviceInterface i;
 	i._create = &DirectoryDevice::create;
 	i._destroy = &DirectoryDevice::destroy;
@@ -30,9 +32,16 @@ FileContext::FileContext() {
 	i._deleteFile = &DirectoryDevice::deleteFile;
 
 	registerDeviceInterface(i);
+	
+	// create processing thread
+	_processing = true;
+	_processingThread = std::thread(&FileContext::processingFunc, this);
 }
 
 FileContext::~FileContext() {
+	_processing = false;
+	_processingThread.join();
+
 	for (File *f : _files) {
 		Mount *m = f->_mount;
 		m->_interface->_closeFile(m->_device, f->_file);
@@ -125,5 +134,55 @@ ErrorCode FileContext::openFile(const char *path, FileMode &fileMode, File **fil
 ErrorCode FileContext::closeFile(File *file) {
 	delete file;
 	return LFS_NOT_FOUND;
+}
+
+WorkItem *FileContext::createWorkItem() {
+	return new WorkItem();
+}
+
+void FileContext::releaseWorkItem(WorkItem *workItem) {
+	delete workItem;
+}
+
+void FileContext::submitWorkItem(WorkItem *workItem) {
+	_workItemQueue.push(workItem);
+}
+
+void FileContext::waitForWorkItem(WorkItem *workItem) {
+	while (!workItem->_completed)
+		std::this_thread::yield();
+}
+
+void FileContext::processingFunc(FileContext *ctx) {
+	while(ctx->_processing) {
+		WorkItem *item = ctx->_workItemQueue.pop(nullptr);
+		if (item) {
+			Mount *mount = item->_file->_mount;
+			FileHandle handle = item->_file->_file;
+
+			switch (item->_operation) {
+			case LFS_OP_EXISTS:
+				// TODO: implement?
+				break;
+			case LFS_OP_SIZE:
+			{
+				size_t fileSize = mount->_interface->_fileSize(mount->_device, handle);
+				item->_operationBytes = static_cast<uint64_t>(fileSize);
+				break;
+			}
+			case LFS_OP_READ:
+				break;
+			case LFS_OP_WRITE:
+				break;
+			};
+
+			item->_completed = true;
+			if (item->_callback) {
+				item->_callback(item);
+			}
+		} else {
+			// wait for condition variable to notify because queue is empty
+		}
+	}
 }
 

@@ -12,7 +12,7 @@ liblaminaFSInfo = defaultGCCConfig {
   commonCompileFlags = "-g -Wall -Werror -fPIC -O2",
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++11",
-  linkFlags = "-shared",
+  linkFlags = "-shared -lpthread",
   outputLocation = ObjAndBinDirs "obj" ".",
   includeDirs = ["src"]
 }
@@ -27,7 +27,7 @@ testsInfo = defaultGCCConfig {
   commonCompileFlags = "-g -O2",
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++11",
-  linkFlags = "-L. -llaminaFS -lstdc++",
+  linkFlags = "-L. -llaminaFS -lstdc++ -lpthread",
   extraLinkDeps = ["liblaminaFS.so"],
   outputLocation = ObjAndBinDirs "obj" ".",
   includeDirs = ["src", "tests"]

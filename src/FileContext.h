@@ -36,7 +36,7 @@ public:
 
 		typedef ErrorCode (*OpenFileFunc)(void *, const char *, FileMode *, FileHandle *);
 		typedef void (*CloseFileFunc)(void *, FileHandle);
-		typedef bool (*FileExistsFunc)(void *, const char *); // TODO: rethink this
+		typedef bool (*FileExistsFunc)(void *, const char *);
 		typedef size_t (*FileSizeFunc)(void *, FileHandle);
 		typedef size_t (*ReadFileFunc)(void *, FileHandle, size_t, uint8_t *, size_t);
 		

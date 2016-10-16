@@ -162,17 +162,19 @@ void FileContext::processingFunc(FileContext *ctx) {
 
 			switch (item->_operation) {
 			case LFS_OP_EXISTS:
-				// TODO: implement?
+				
 				break;
 			case LFS_OP_SIZE:
 			{
 				size_t fileSize = mount->_interface->_fileSize(mount->_device, handle);
-				item->_operationBytes = static_cast<uint64_t>(fileSize);
+				item->_result.bytes = static_cast<uint64_t>(fileSize);
 				break;
 			}
 			case LFS_OP_READ:
 				break;
 			case LFS_OP_WRITE:
+				break;
+			case LFS_OP_DELETE:
 				break;
 			};
 

@@ -19,13 +19,12 @@ int main(int argc, char *argv[]) {
 		printf("Couldn't open file\n");
 	} else {
 		WorkItem *wi = ctx.createWorkItem();
-		wi->_operation = LFS_OP_SIZE;
-		wi->_file = f;
+		wi->configSize(f);
 
 		ctx.submitWorkItem(wi);
 		ctx.waitForWorkItem(wi);
 
-		printf("file size is: %llu bytes\n", wi->_operationBytes);
+		printf("file size is: %llu bytes\n", wi->_result.bytes);
 		
 		ctx.releaseWorkItem(wi);
 	}

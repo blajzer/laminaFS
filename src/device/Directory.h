@@ -24,7 +24,7 @@ public:
 	static size_t fileSize(void *device, FileHandle file);
 	static size_t readFile(void *device, FileHandle file, size_t offset, uint8_t *buffer, size_t bytesToRead);
 
-	static size_t writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToRead);
+	static size_t writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToWrite);
 	static ErrorCode deleteFile(void *device, const char *filePath);
 
 private:

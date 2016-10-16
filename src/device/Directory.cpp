@@ -43,16 +43,16 @@ ErrorCode DirectoryDevice::openFile(void *device, const char *filePath, FileMode
 	const char *modeString = 0;
 	switch (*fileMode) {
 	case LFS_FM_READ:
-		modeString = "r";
+		modeString = "rb";
 		break;
 	case LFS_FM_WRITE:
-		modeString = "w";
+		modeString = "wb";
 		break;
 	case LFS_FM_READ_WRITE:
-		modeString = "r+";
+		modeString = "w+b";
 		break;
 	case LFS_FM_APPEND:
-		modeString = "a";
+		modeString = "ab";
 		break;
 	};
 
@@ -83,23 +83,44 @@ bool DirectoryDevice::fileExists(void *device, const char *filePath) {
 
 size_t DirectoryDevice::fileSize(void *device, FileHandle file) {
 	size_t fileSize = 0;
-	size_t lastPos = 0;
-	FILE *handle = reinterpret_cast<FILE*>(file);
 
-	lastPos = ftell(handle);
-	if(fseek(handle, 0L, SEEK_END) == 0) {
-		fileSize = ftell(handle);
-		fseek(handle, lastPos, SEEK_SET);
+	if (file) {
+		FILE *handle = reinterpret_cast<FILE*>(file);
+		size_t lastPos = ftell(handle);
+
+		if(fseek(handle, 0L, SEEK_END) == 0) {
+			fileSize = ftell(handle);
+			fseek(handle, lastPos, SEEK_SET);
+		}
 	}
 	return fileSize;
 }
 
 size_t DirectoryDevice::readFile(void *device, FileHandle file, size_t offset, uint8_t *buffer, size_t bytesToRead) {
-	return 0;
+	size_t bytesRead = 0;
+	if (file) {
+		FILE *handle = reinterpret_cast<FILE*>(file);
+		size_t lastPos = ftell(handle);
+		if (fseek(handle, offset, SEEK_SET) == 0) {
+			bytesRead = fread(buffer, 1, bytesToRead, handle);
+			fseek(handle, lastPos, SEEK_SET);
+		}
+	}
+	return bytesRead;
 }
 
-size_t DirectoryDevice::writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToRead) {
-	return 0;
+size_t DirectoryDevice::writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToWrite) {
+	size_t bytesWritten = 0;
+	if (file) {
+		FILE *handle = reinterpret_cast<FILE*>(file);
+		//size_t lastPos = ftell(handle);
+		//if (fseek(handle, offset, SEEK_SET) == 0) {
+			bytesWritten = fwrite(buffer, 1, bytesToWrite, handle);
+		//	fSeek(handle, lastPos, SEEK_SET);
+		//}
+	}
+
+	return bytesWritten;
 }
 
 ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {

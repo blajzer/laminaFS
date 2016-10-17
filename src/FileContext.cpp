@@ -17,8 +17,9 @@ struct lfs_file_t {
 	FileContext::Mount *_mount;
 };
 
-FileContext::FileContext(uint64_t maxWorkItems)
-: _workItemQueue(maxWorkItems)
+FileContext::FileContext(uint64_t maxQueuedWorkItems, uint64_t workItemPoolSize)
+: _workItemPool(workItemPoolSize)
+, _workItemQueue(maxQueuedWorkItems)
 {
 	DeviceInterface i;
 	i._create = &DirectoryDevice::create;
@@ -137,11 +138,11 @@ ErrorCode FileContext::closeFile(File *file) {
 }
 
 WorkItem *FileContext::createWorkItem() {
-	return new WorkItem();
+	return _workItemPool.alloc();
 }
 
 void FileContext::releaseWorkItem(WorkItem *workItem) {
-	delete workItem;
+	_workItemPool.free(workItem);
 }
 
 void FileContext::submitWorkItem(WorkItem *workItem) {

@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "shared_types.h"
+#include "util/PoolAllocator.h"
 #include "util/RingBuffer.h"
 
 namespace laminaFS {
@@ -23,7 +24,7 @@ typedef lfs_work_item_t WorkItem;
 //! mounts, and the backend processing that occurs.
 class FileContext {
 public:
-	FileContext(uint64_t maxWorkItems = 128);
+	FileContext(uint64_t maxQueuedWorkItems = 128, uint64_t workItemPoolSize = 1024);
 	~FileContext();
 
 	typedef int (*LogFunc)(const char *, ...);
@@ -39,7 +40,7 @@ public:
 		typedef bool (*FileExistsFunc)(void *, const char *);
 		typedef size_t (*FileSizeFunc)(void *, FileHandle);
 		typedef size_t (*ReadFileFunc)(void *, FileHandle, size_t, uint8_t *, size_t);
-		
+
 		typedef size_t (*WriteFileFunc)(void *, FileHandle, uint8_t *, size_t);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
 
@@ -123,7 +124,8 @@ private:
 	std::vector<DeviceInterface> _interfaces;
 	std::vector<Mount> _mounts;
 	std::vector<File*> _files;
-
+	
+	util::PoolAllocator<WorkItem> _workItemPool;
 	util::RingBuffer<WorkItem*> _workItemQueue;
 	std::thread _processingThread;
 	LogFunc _log = nullptr;

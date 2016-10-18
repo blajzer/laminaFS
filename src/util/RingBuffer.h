@@ -7,6 +7,8 @@
 #include <mutex>
 #include <thread>
 
+#include "shared_types.h"
+
 namespace laminaFS::util {
 
 //! Simple ring buffer of a fixed capacity.
@@ -18,14 +20,15 @@ public:
 		_full = true;
 	}
 
-	RingBuffer(uint64_t capacity) {
+	RingBuffer(lfs_allocator_t &alloc, uint64_t capacity) {
+		_alloc = alloc;
 		_capacity = capacity;
-		_buffer = new T[capacity];
+		_buffer = reinterpret_cast<T*>(_alloc.alloc(_alloc.allocator, sizeof(T) * capacity, alignof(T)));
 		_full = false;
 	}
 
 	~RingBuffer() {
-		delete [] _buffer;
+		_alloc.free(_alloc.allocator, _buffer);
 	}
 
 	//! Push an item into the buffer. Blocks if buffer is full.
@@ -93,6 +96,7 @@ public:
 
 private:
 	T *_buffer;
+	lfs_allocator_t _alloc;
 	uint64_t _capacity;
 	uint64_t _readPos = 0;
 	uint64_t _writePos = 0;

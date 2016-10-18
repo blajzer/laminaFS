@@ -6,124 +6,162 @@
 #include <cstdio>
 #include <cstring>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 using namespace laminaFS;
 
-DirectoryDevice::DirectoryDevice(const char *path) {
+DirectoryDevice::DirectoryDevice(Allocator *allocator, const char *path) {
+	_alloc = allocator;
+
 	// TODO: realpath()
 	_pathLen = strlen(path);
-	_devicePath = new char[_pathLen + 1];
+	_devicePath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * (_pathLen + 1), alignof(char)));
 	strcpy(_devicePath, path);
 }
 
 DirectoryDevice::~DirectoryDevice() {
-	delete [] _devicePath;
+	_alloc->free(_alloc->allocator, _devicePath);
 }
 
-ErrorCode DirectoryDevice::create(const char *path, void **device) {
-	// TODO: verify directory exists, set return code accordingly
+ErrorCode DirectoryDevice::create(Allocator *alloc, const char *path, void **device) {
+#ifdef _WIN32
+	struct _stat statInfo;
+	int result = _stat(path, &statInfo);
+#else
+	struct stat statInfo;
+	int result = stat(path, &statInfo);
+#endif
+
 	ErrorCode returnCode = LFS_OK;
-	*device = new DirectoryDevice(path);
+
+	if (result == 0 && S_ISDIR(statInfo.st_mode)) {
+		*device = new(alloc->alloc(alloc->allocator, sizeof(DirectoryDevice), alignof(DirectoryDevice))) DirectoryDevice(alloc, path);
+	} else {
+		*device = nullptr;
+		returnCode = LFS_NOT_FOUND;
+	}
 
 	return returnCode;
 }
 
 void DirectoryDevice::destroy(void *device) {
-	delete static_cast<DirectoryDevice *>(device);
+	DirectoryDevice *dir = static_cast<DirectoryDevice *>(device);
+	dir->_alloc->free(dir->_alloc->allocator, device);
 }
 
-ErrorCode DirectoryDevice::openFile(void *device, const char *filePath, FileMode *fileMode, FileHandle *file) {
-	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
-	
-	// TODO: Windows paths
-	uint32_t diskPathLen = dev->_pathLen + strlen(filePath) + 1;
-	char *diskPath = new char[diskPathLen];
-	strcpy(diskPath, dev->_devicePath);
-	strcpy(diskPath + dev->_pathLen, filePath);
-	
-	const char *modeString = 0;
-	switch (*fileMode) {
-	case LFS_FM_READ:
-		modeString = "rb";
-		break;
-	case LFS_FM_WRITE:
-		modeString = "wb";
-		break;
-	case LFS_FM_READ_WRITE:
-		modeString = "w+b";
-		break;
-	case LFS_FM_APPEND:
-		modeString = "ab";
-		break;
-	};
-
-	ErrorCode returnVal = LFS_OK;
-	
-	FILE *realFile = fopen(diskPath, modeString);
-	if (realFile) {
-		*file = realFile;
-	} else {
-		returnVal = LFS_NOT_FOUND;
-		*file = nullptr;
-	}
-
-	delete [] diskPath;
-
-	return returnVal;
+FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
+	char *diskPath = getDevicePath(filePath);
+	FILE *file = fopen(diskPath, modeString);
+	freeDevicePath(diskPath);
+	return file;
 }
 
-void DirectoryDevice::closeFile(void *device, FileHandle file) {
-	if (file) {
-		fclose(static_cast<FILE*>(file));
+char *DirectoryDevice::getDevicePath(const char *filePath) {
+	uint32_t diskPathLen = _pathLen + strlen(filePath) + 1;
+	char *diskPath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * diskPathLen, alignof(char)));
+	strcpy(diskPath, _devicePath);
+	strcpy(diskPath + _pathLen, filePath);
+
+	// replace forward slashes with backslashes on windows
+#ifdef _WIN32
+	for (uint32_t i = 0; i < diskPathLen; ++i) {
+		if (diskPath[i] == '/')
+			diskPath[i] = '\\';
 	}
+#endif
+
+	return diskPath;
+}
+
+void DirectoryDevice::freeDevicePath(char *path) {
+	_alloc->free(_alloc->allocator, path);
 }
 
 bool DirectoryDevice::fileExists(void *device, const char *filePath) {
-	return false;
+	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
+	char *diskPath = dev->getDevicePath(filePath);
+
+#ifdef _WIN32
+	struct _stat statInfo;
+	int result = _stat(diskPath, &statInfo);
+#else
+	struct stat statInfo;
+	int result = stat(diskPath, &statInfo);
+#endif
+
+	dev->freeDevicePath(diskPath);
+	return result == 0 && S_ISREG(statInfo.st_mode);
 }
 
-size_t DirectoryDevice::fileSize(void *device, FileHandle file) {
-	size_t fileSize = 0;
+size_t DirectoryDevice::fileSize(void *device, const char *filePath) {
+	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
+	char *diskPath = dev->getDevicePath(filePath);
 
-	if (file) {
-		FILE *handle = reinterpret_cast<FILE*>(file);
-		size_t lastPos = ftell(handle);
+#ifdef _WIN32
+	struct _stat statInfo;
+	int result = _stat(diskPath, &statInfo);
+#else
+	struct stat statInfo;
+	int result = stat(diskPath, &statInfo);
+#endif
 
-		if(fseek(handle, 0L, SEEK_END) == 0) {
-			fileSize = ftell(handle);
-			fseek(handle, lastPos, SEEK_SET);
-		}
+	dev->freeDevicePath(diskPath);
+
+	if (result == 0 && S_ISREG(statInfo.st_mode)) {
+		return statInfo.st_size;
+	} else {
+		return 0;
 	}
-	return fileSize;
 }
 
-size_t DirectoryDevice::readFile(void *device, FileHandle file, size_t offset, uint8_t *buffer, size_t bytesToRead) {
+size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer) {
 	size_t bytesRead = 0;
+
+	DirectoryDevice *dir = static_cast<DirectoryDevice*>(device);
+	FILE *file = dir->openFile(filePath, "rb");
+
 	if (file) {
-		FILE *handle = reinterpret_cast<FILE*>(file);
-		size_t lastPos = ftell(handle);
-		if (fseek(handle, offset, SEEK_SET) == 0) {
-			bytesRead = fread(buffer, 1, bytesToRead, handle);
-			fseek(handle, lastPos, SEEK_SET);
+		size_t fileSize = 0;
+		if (fseek(file, 0L, SEEK_END) == 0) {
+			fileSize = ftell(file);
 		}
+
+		if (fileSize && fseek(file, 0L, SEEK_SET) == 0) {
+			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize, 1);
+			if (*buffer) {
+				bytesRead = fread(*buffer, 1, fileSize, file);
+			}
+		}
+
+		fclose(file);
 	}
 	return bytesRead;
 }
 
-size_t DirectoryDevice::writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToWrite) {
+size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append) {
 	size_t bytesWritten = 0;
+
+	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
+	FILE *file = dev->openFile(filePath, append ? "ab" : "wb");
+
 	if (file) {
-		FILE *handle = reinterpret_cast<FILE*>(file);
-		//size_t lastPos = ftell(handle);
-		//if (fseek(handle, offset, SEEK_SET) == 0) {
-			bytesWritten = fwrite(buffer, 1, bytesToWrite, handle);
-		//	fSeek(handle, lastPos, SEEK_SET);
-		//}
+		bytesWritten = fwrite(buffer, 1, bytesToWrite, file);
+		fclose(file);
 	}
 
 	return bytesWritten;
 }
 
 ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
-	return LFS_NOT_FOUND;
+	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
+	char *diskPath = dev->getDevicePath(filePath);
+
+	// TODO: handle other possible errors?
+	ErrorCode result = unlink(diskPath) == 0 ? LFS_OK : LFS_NOT_FOUND;
+
+	dev->freeDevicePath(diskPath);
+	return result;
 }
 

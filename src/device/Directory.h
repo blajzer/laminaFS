@@ -12,22 +12,25 @@ namespace laminaFS {
 class DirectoryDevice {
 public:
 	DirectoryDevice() = delete;
-	DirectoryDevice(const char *path);
+	DirectoryDevice(Allocator *allocator, const char *path);
 	~DirectoryDevice();
 
-	static ErrorCode create(const char *path, void **device);
+	static ErrorCode create(Allocator *allocator, const char *path, void **device);
 	static void destroy(void *device);
-
-	static ErrorCode openFile(void *device, const char *filePath, FileMode *fileMode, FileHandle *file);
-	static void closeFile(void *device, FileHandle file);
+	
 	static bool fileExists(void *device, const char *filePath);
-	static size_t fileSize(void *device, FileHandle file);
-	static size_t readFile(void *device, FileHandle file, size_t offset, uint8_t *buffer, size_t bytesToRead);
+	static size_t fileSize(void *device, const char *filePath);
+	static size_t readFile(void *device, const char *filePath, lfs_allocator_t *, void **buffer);
 
-	static size_t writeFile(void *device, FileHandle file, uint8_t *buffer, size_t bytesToWrite);
+	static size_t writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append);
 	static ErrorCode deleteFile(void *device, const char *filePath);
 
 private:
+	FILE *openFile(const char *filePath, const char *modeString);
+	char *getDevicePath(const char *filePath);
+	void freeDevicePath(char *path);
+
+	Allocator *_alloc;
 	char *_devicePath = nullptr;
 	uint32_t _pathLen = 0;
 };

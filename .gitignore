@@ -1,4 +1,8 @@
 .dib
-.o
+*.o
+*.so
+*.exe
+*.dll
+test
 doc/
 obj/

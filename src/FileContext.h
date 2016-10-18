@@ -15,16 +15,16 @@
 namespace laminaFS {
 
 typedef void* FileHandle;
-typedef lfs_file_t File;
-typedef lfs_file_mode_t FileMode;
 typedef lfs_error_code_t ErrorCode;
 typedef lfs_work_item_t WorkItem;
+typedef lfs_allocator_t Allocator;
+typedef lfs_work_item_callback_t WorkItemCallback;
 
 //! FileContext is the "main" object in LaminaFS. It handles management of files,
 //! mounts, and the backend processing that occurs.
 class FileContext {
 public:
-	FileContext(uint64_t maxQueuedWorkItems = 128, uint64_t workItemPoolSize = 1024);
+	FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems = 128, uint64_t workItemPoolSize = 1024);
 	~FileContext();
 
 	typedef int (*LogFunc)(const char *, ...);
@@ -32,24 +32,20 @@ public:
 	//! DeviceInterface is the extensibility mechanism for adding new types of
 	//! devices. Fill out one of these and then call registerDeviceInterface().
 	struct DeviceInterface {
-		typedef ErrorCode (*CreateFunc)(const char *, void **);
+		typedef ErrorCode (*CreateFunc)(lfs_allocator_t *, const char *, void **);
 		typedef void (*DestroyFunc)(void*);
 
-		typedef ErrorCode (*OpenFileFunc)(void *, const char *, FileMode *, FileHandle *);
-		typedef void (*CloseFileFunc)(void *, FileHandle);
 		typedef bool (*FileExistsFunc)(void *, const char *);
-		typedef size_t (*FileSizeFunc)(void *, FileHandle);
-		typedef size_t (*ReadFileFunc)(void *, FileHandle, size_t, uint8_t *, size_t);
+		typedef size_t (*FileSizeFunc)(void *, const char *);
+		typedef size_t (*ReadFileFunc)(void *, const char *, lfs_allocator_t *, void **);
 
-		typedef size_t (*WriteFileFunc)(void *, FileHandle, uint8_t *, size_t);
+		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
 
 		// required
 		CreateFunc _create = nullptr;
 		DestroyFunc _destroy = nullptr;
 
-		OpenFileFunc _openFile = nullptr;
-		CloseFileFunc _closeFile = nullptr;
 		FileExistsFunc _fileExists = nullptr;
 		FileSizeFunc _fileSize = nullptr;
 		ReadFileFunc _readFile = nullptr;
@@ -71,30 +67,66 @@ public:
 	//! @return the return code, 0 on success
 	ErrorCode createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath);
 
-	//! Open a file
-	//! @param path the virtual path to the file
-	//! @param fileMode the mode to open the file in, will be adjusted based on returned file mount capabilities
-	//! @param file outval which will contain the file
-	//! @return the return code, 0 on success
-	ErrorCode openFile(const char *path, FileMode &fileMode, File **file);
+	// TODO: releaseMount
 
-	//! Close a file.
-	//! @param file the handle to the file
-	//! @return the return code, 0 on success
-	ErrorCode closeFile(File *file);
+	//! Reads the entirety of a file.
+	//! @param filepath the path to the file to read
+	//! @param alloc the allocator to use. If NULL will use the context's allocator.
+	//! @return a WorkItem representing the work to be done
+	WorkItem *readFile(const char *filepath, Allocator *alloc = nullptr);
 	
-	//! Creates a WorkItem.
-	//! @return a pointer to the newly created and initialized WorkItem.
-	WorkItem *createWorkItem();
+	//! Writes a buffer to a file.
+	//! @param filepath the path to the file to write
+	//! @param buffer the buffer to write
+	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @return a WorkItem representing the work to be done
+	WorkItem *writeFile(const char *filepath, void *buffer, uint64_t bufferBytes);
+
+	//! Appends a buffer to a file.
+	//! @param filepath the path to the file to append
+	//! @param buffer the buffer to write
+	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @return a WorkItem representing the work to be done
+	WorkItem *appendFile(const char *filepath, void *buffer, uint64_t bufferBytes);
 	
+	//! Determines if a file exists.
+	//! @param filepath the path to the file to delete
+	//! @return a WorkItem representing the work to be done
+	WorkItem *fileExists(const char *filepath);
+	
+	//! Gets the size of a file.
+	//! @param filepath the path to the file to delete
+	//! @return a WorkItem representing the work to be done
+	WorkItem *fileSize(const char *filepath);
+	
+	//! Deletes a file.
+	//! @param filepath the path to the file to delete
+	//! @return a WorkItem representing the work to be done
+	WorkItem *deleteFile(const char *filepath);
+
+	//! Gets the result code from a WorkItem
+	//! @param workItem the WorkItem
+	//! @return the result code
+	ErrorCode workItemGetResult(WorkItem *workItem);
+	
+	//! Gets the output buffer from a WorkItem.
+	//! @param workItem the WorkItem
+	//! @return the output buffer
+	void *workItemGetBuffer(WorkItem *workItem);
+	
+	//! Gets the bytes read/written from a WorkItem.
+	//! @param workItem the WorkItem
+	//! @return the bytes read/written
+	uint64_t workItemGetBytes(WorkItem *workItem);
+	
+	//! Frees the output buffer that was allocated by the work item.
+	//! @param workItem the WorkItem
+	void workItemFreeBuffer(WorkItem *workItem);
+
 	//! Releases a WorkItem.
 	//! @param workItem the WorkItem to release.
 	void releaseWorkItem(WorkItem *workItem);
-	
-	//! Submits a WorkItem for processing.
-	//! @param workItem the WorkItem to submit.
-	void submitWorkItem(WorkItem *workItem);
-	
+
 	//! Waits for a WorkItem to finish processing.
 	//! @param workItem the WorkItem to wait for
 	void waitForWorkItem(WorkItem *workItem);
@@ -102,32 +134,41 @@ public:
 	//! Sets the log function.
 	//! @param func the logging function
 	void setLogFunc(LogFunc func) { _log = func; }
-	
+
 	//! Gets the log function.
 	//! @return the logging function
 	LogFunc getLogFunc() { return _log; }
+	
+	//! Returns the Allocator interface used to initialize this context.
+	//! @return the Allocator
+	Allocator &getAllocator() { return _alloc; }
 
 	//! The type index of the Directory device. It will always be the first interface.
 	static const uint32_t kDirectoryDeviceIndex = 0;
 private:
-	friend struct ::lfs_file_t;
-
 	struct Mount {
 		char *_prefix;
 		void *_device;
 		DeviceInterface *_interface;
 		uint32_t _prefixLen;
 	};
+
+	Mount* findMountAndPath(const char *path, const char **devicePath);
+	Mount* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
 	
+	WorkItem *allocWorkItemCommon(const char *path, uint32_t op);
+
 	static void processingFunc(FileContext *ctx);
 
+	// TODO: replace with flat arrays allocated through the allocator?
 	std::vector<DeviceInterface> _interfaces;
 	std::vector<Mount> _mounts;
-	std::vector<File*> _files;
-	
+
 	util::PoolAllocator<WorkItem> _workItemPool;
 	util::RingBuffer<WorkItem*> _workItemQueue;
 	std::thread _processingThread;
+
+	Allocator _alloc;
 	LogFunc _log = nullptr;
 	std::atomic<bool> _processing;
 };

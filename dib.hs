@@ -5,39 +5,53 @@ import Dib.Builders.C
 import Dib.Target
 import qualified Data.Text as T
 
-liblaminaFSInfo = defaultGCCConfig {
-  outputName = "liblaminaFS.so",
-  targetName = "laminaFS",
+exeExt platform = if platform == "mingw32" then ".exe" else ""
+soExt platform = if platform == "mingw32" then ".dll" else ".so"
+
+mingw32Config = defaultGXXConfig {
+  compiler = "i686-w64-mingw32-gcc",
+  linker = "i686-w64-mingw32-g++ ",
+  archiver = "i686-w64-mingw32-ar"
+}
+
+liblaminaFSInfo platform = (getCompiler platform) {
+  outputName = "liblaminaFS" `T.append` (soExt platform),
+  targetName = "laminaFS-" `T.append` platform,
   srcDir = "src",
   commonCompileFlags = "-g -Wall -Werror -fPIC -O2",
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++11",
   linkFlags = "-shared -lpthread",
-  outputLocation = ObjAndBinDirs "obj" ".",
+  outputLocation = ObjAndBinDirs ("obj/" `T.append` platform) ".",
   includeDirs = ["src"]
 }
 
-liblaminaFS = makeCTarget liblaminaFSInfo
-cleanLamina = makeCleanTarget liblaminaFSInfo
+liblaminaFS platform = makeCTarget $ liblaminaFSInfo platform
+cleanLamina platform = makeCleanTarget $ liblaminaFSInfo platform
 
-testsInfo = defaultGCCConfig {
-  outputName = "test",
-  targetName = "tests",
+testsInfo platform = (getCompiler platform) {
+  outputName = "test" `T.append` (exeExt platform),
+  targetName = "tests-" `T.append` platform,
   srcDir = "tests",
   commonCompileFlags = "-g -O2",
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++11",
   linkFlags = "-L. -llaminaFS -lstdc++ -lpthread",
   extraLinkDeps = ["liblaminaFS.so"],
-  outputLocation = ObjAndBinDirs "obj" ".",
+  outputLocation = ObjAndBinDirs ("obj/" `T.append` platform) ".",
   includeDirs = ["src", "tests"]
 }
 
-tests = addDependency (makeCTarget testsInfo) liblaminaFS
-cleanTests = makeCleanTarget testsInfo
+tests platform = addDependency (makeCTarget $ testsInfo platform) $ liblaminaFS platform
+cleanTests platform = makeCleanTarget $ testsInfo platform
 
-allTarget = makePhonyTarget "all" [liblaminaFS, tests]
+allTarget platform = makePhonyTarget "all" [liblaminaFS platform, tests platform]
 
-targets = [allTarget, liblaminaFS, cleanLamina, tests, cleanTests]
+targets platform = [allTarget platform,  liblaminaFS platform, cleanLamina platform, tests platform, cleanTests platform]
 
-main = dib targets
+getBuildPlatform = makeArgDictLookupFunc "PLATFORM" "local"
+getCompiler platform = if platform == "mingw32" then mingw32Config else defaultGXXConfig
+
+main = do
+  argDict <- getArgDict
+  dib $ targets $ T.pack $ getBuildPlatform argDict

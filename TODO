@@ -1,2 +1,3 @@
-* Rework/figure out File/lfs_file_t struct, file bookkeeping in general
+* releaseMount
 * Lock-free ring buffer? (https://www.kernel.org/doc/Documentation/trace/ring-buffer-design.txt)
+* Processing thread per device interface?

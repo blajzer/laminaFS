@@ -8,12 +8,15 @@ using namespace laminaFS;
 
 #define CTX(x) static_cast<FileContext*>(x._value)
 
-lfs_file_context_t lfs_file_context_create() {
-	return lfs_file_context_t{ new FileContext() };
+lfs_file_context_t lfs_file_context_create(lfs_allocator_t *allocator) {
+	void *mem = allocator->alloc(allocator->allocator, sizeof(FileContext), alignof(FileContext));
+	return lfs_file_context_t{ new(mem) FileContext(*allocator) };
 }
 
 void lfs_file_context_destroy(lfs_file_context_t ctx) {
-	delete CTX(ctx);
+	lfs_allocator_t alloc = CTX(ctx)->getAllocator();
+	CTX(ctx)->~FileContext();
+	alloc.free(alloc.allocator, CTX(ctx));
 }
 
 int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_device_interface_t *interface) {
@@ -22,14 +25,6 @@ int32_t lfs_register_device_interface(lfs_file_context_t ctx, lfs_device_interfa
 
 lfs_error_code_t lfs_create_mount(lfs_file_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath) {
 	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath);
-}
-
-lfs_error_code_t lfs_open_file(lfs_file_context_t ctx, const char *path, lfs_file_mode_t *fileMode, lfs_file_t **file) {
-	return CTX(ctx)->openFile(path, *fileMode, file);
-}
-
-lfs_error_code_t lfs_close_file(lfs_file_context_t ctx, lfs_file_t *file) {
-	return CTX(ctx)->closeFile(file);
 }
 
 void lfs_set_log_func(lfs_file_context_t ctx, lfs_log_func_t func) {

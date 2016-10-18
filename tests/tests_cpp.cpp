@@ -27,6 +27,8 @@ int test_cpp_api() {
 
 		TEST(LFS_OK, WorkItemGetResult(readTest), "Read file /one/random.txt");
 
+		WorkItemFreeBuffer(readTest);
+
 		ctx.releaseWorkItem(readTest);
 	}
 

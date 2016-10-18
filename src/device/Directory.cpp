@@ -48,6 +48,7 @@ ErrorCode DirectoryDevice::create(Allocator *alloc, const char *path, void **dev
 
 void DirectoryDevice::destroy(void *device) {
 	DirectoryDevice *dir = static_cast<DirectoryDevice *>(device);
+	dir->~DirectoryDevice();
 	dir->_alloc->free(dir->_alloc->allocator, device);
 }
 

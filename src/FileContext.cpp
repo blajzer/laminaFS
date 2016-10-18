@@ -62,7 +62,7 @@ void *WorkItemGetBuffer(WorkItem *workItem) {
 }
 
 void WorkItemFreeBuffer(WorkItem *workItem) {
-	workItem->_allocator->free(workItem->_allocator, workItem);
+	workItem->_allocator->free(workItem->_allocator, workItem->_buffer);
 }
 
 uint64_t WorkItemGetBytes(WorkItem *workItem) {

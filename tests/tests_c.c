@@ -24,7 +24,9 @@ int test_c_api() {
 		lfs_wait_for_work_item(readTest);
 
 		TEST(LFS_OK, lfs_work_item_get_result(readTest), "Read file /one/random.txt");
-
+		
+		lfs_work_item_free_buffer(readTest);
+		
 		lfs_release_work_item(ctx, readTest);
 	}
 

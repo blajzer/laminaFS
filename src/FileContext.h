@@ -20,6 +20,33 @@ typedef lfs_work_item_t WorkItem;
 typedef lfs_allocator_t Allocator;
 typedef lfs_work_item_callback_t WorkItemCallback;
 
+extern Allocator DefaultAllocator;
+
+
+//! Gets the result code from a WorkItem
+//! @param workItem the WorkItem
+//! @return the result code
+extern ErrorCode WorkItemGetResult(WorkItem *workItem);
+
+//! Gets the output buffer from a WorkItem.
+//! @param workItem the WorkItem
+//! @return the output buffer
+extern void *WorkItemGetBuffer(WorkItem *workItem);
+
+//! Gets the bytes read/written from a WorkItem.
+//! @param workItem the WorkItem
+//! @return the bytes read/written
+extern uint64_t WorkItemGetBytes(WorkItem *workItem);
+
+//! Frees the output buffer that was allocated by the work item.
+//! @param workItem the WorkItem
+extern void WorkItemFreeBuffer(WorkItem *workItem);
+
+//! Waits for a WorkItem to finish processing.
+//! @param workItem the WorkItem to wait for
+extern void WaitForWorkItem(WorkItem *workItem);
+
+
 //! FileContext is the "main" object in LaminaFS. It handles management of files,
 //! mounts, and the backend processing that occurs.
 class FileContext {
@@ -104,32 +131,9 @@ public:
 	//! @return a WorkItem representing the work to be done
 	WorkItem *deleteFile(const char *filepath);
 
-	//! Gets the result code from a WorkItem
-	//! @param workItem the WorkItem
-	//! @return the result code
-	ErrorCode workItemGetResult(WorkItem *workItem);
-	
-	//! Gets the output buffer from a WorkItem.
-	//! @param workItem the WorkItem
-	//! @return the output buffer
-	void *workItemGetBuffer(WorkItem *workItem);
-	
-	//! Gets the bytes read/written from a WorkItem.
-	//! @param workItem the WorkItem
-	//! @return the bytes read/written
-	uint64_t workItemGetBytes(WorkItem *workItem);
-	
-	//! Frees the output buffer that was allocated by the work item.
-	//! @param workItem the WorkItem
-	void workItemFreeBuffer(WorkItem *workItem);
-
 	//! Releases a WorkItem.
 	//! @param workItem the WorkItem to release.
 	void releaseWorkItem(WorkItem *workItem);
-
-	//! Waits for a WorkItem to finish processing.
-	//! @param workItem the WorkItem to wait for
-	void waitForWorkItem(WorkItem *workItem);
 
 	//! Sets the log function.
 	//! @param func the logging function

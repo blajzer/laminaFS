@@ -8,7 +8,7 @@
 struct lfs_work_item_t;
 
 // typedefs
-typedef void (*lfs_work_item_callback_t)(lfs_work_item_t *);
+typedef void (*lfs_work_item_callback_t)(struct lfs_work_item_t *);
 
 //! Memory allocation function. Params are userdata pointer, size in bytes, and alignment in bytes.
 typedef void *(*lfs_mem_alloc_t)(void *, size_t, size_t);
@@ -27,3 +27,5 @@ enum lfs_error_code_t {
 	LFS_UNSUPPORTED,
 };
 
+// default allocator
+extern struct lfs_allocator_t lfs_default_allocator;

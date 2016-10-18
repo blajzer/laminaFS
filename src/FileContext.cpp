@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <malloc.h>
 
 using namespace laminaFS;
 
@@ -34,6 +35,45 @@ struct lfs_work_item_t {
 	lfs_error_code_t _resultCode = LFS_OK;
 	std::atomic<bool> _completed;
 };
+
+void *default_alloc_func(void *, size_t bytes, size_t alignment) {
+#if defined _WIN32
+	return _aligned_malloc(bytes, alignment);
+#else
+	return memalign(alignment, bytes);
+#endif
+}
+
+void default_free_func(void *, void *ptr) {
+	free(ptr);
+}
+
+lfs_allocator_t lfs_default_allocator = { default_alloc_func, default_free_func, nullptr };
+
+namespace laminaFS {
+Allocator DefaultAllocator = lfs_default_allocator;
+	
+ErrorCode WorkItemGetResult(WorkItem *workItem) {
+	return workItem->_resultCode;
+}
+
+void *WorkItemGetBuffer(WorkItem *workItem) {
+	return workItem->_buffer;
+}
+
+void WorkItemFreeBuffer(WorkItem *workItem) {
+	workItem->_allocator->free(workItem->_allocator, workItem);
+}
+
+uint64_t WorkItemGetBytes(WorkItem *workItem) {
+	return workItem->_bufferBytes;
+}
+
+void WaitForWorkItem(WorkItem *workItem) {
+	while (!workItem->_completed)
+		std::this_thread::yield();
+}
+}
 
 FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t workItemPoolSize)
 : _workItemPool(alloc, workItemPoolSize)
@@ -244,27 +284,6 @@ WorkItem *FileContext::deleteFile(const char *filepath) {
 	return item;
 }
 
-
-ErrorCode FileContext::workItemGetResult(WorkItem *workItem) {
-	return workItem->_resultCode;
-}
-
-void *FileContext::workItemGetBuffer(WorkItem *workItem) {
-	return workItem->_buffer;
-}
-
-void FileContext::workItemFreeBuffer(WorkItem *workItem) {
-	workItem->_allocator->free(workItem->_allocator, workItem);
-}
-
-uint64_t FileContext::workItemGetBytes(WorkItem *workItem) {
-	return workItem->_bufferBytes;
-}
-
-void FileContext::waitForWorkItem(WorkItem *workItem) {
-	while (!workItem->_completed)
-		std::this_thread::yield();
-}
 
 void FileContext::processingFunc(FileContext *ctx) {
 	while(ctx->_processing) {

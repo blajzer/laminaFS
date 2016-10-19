@@ -137,7 +137,11 @@ public:
 	//! @return the mount
 	Mount createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &returnCode);
 
-	// TODO: releaseMount
+	//! Releases a mount. 
+	//! Finishes all processing work items and suspends processing while it runs.
+	//! @param mount the mount to remove
+	//! @return whether or not the mount was found and removed
+	bool releaseMount(Mount mount);
 
 	//! Reads the entirety of a file.
 	//! @param filepath the path to the file to read
@@ -215,9 +219,10 @@ private:
 
 	WorkItem *allocWorkItemCommon(const char *path, uint32_t op);
 
+	void startProcessingThread();
+	void stopProcessingThread();
 	static void processingFunc(FileContext *ctx);
 
-	// TODO: replace with flat arrays allocated through the allocator?
 	std::vector<DeviceInterface*, AllocatorAdapter<DeviceInterface*>> _interfaces;
 	std::vector<MountInfo*, AllocatorAdapter<MountInfo*>> _mounts;
 

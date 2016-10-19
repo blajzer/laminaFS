@@ -72,6 +72,13 @@ LFS_C_API int32_t lfs_register_device_interface(lfs_context_t ctx, struct lfs_de
 //! @return the mount
 LFS_C_API lfs_mount_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, enum lfs_error_code_t *returnCode);
 
+//! Removes a mount from a context.
+//! Finishes all processing work items and suspends processing while it runs.
+//! @param ctx the context
+//! @param mount the mount to remove
+//! @return whether or not the mount was found and removed
+LFS_C_API bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount);
+
 //! Reads the entirety of a file.
 //! @param ctx the context
 //! @param filepath the path to the file to read

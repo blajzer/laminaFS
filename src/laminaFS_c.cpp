@@ -27,6 +27,10 @@ lfs_mount_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char 
 	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath, *returnCode);
 }
 
+bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount) {
+	return CTX(ctx)->releaseMount(mount);
+}
+
 lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, lfs_allocator_t *alloc) {
 	return CTX(ctx)->readFile(filepath, alloc);
 }

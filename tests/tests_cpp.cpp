@@ -122,6 +122,10 @@ int test_cpp_api() {
 		ctx.releaseWorkItem(dirDeleteTest);
 	}
 	
+	// remove mount
+	TEST(true, ctx.releaseMount(mount2), "Unmount testData/testroot2 -> /four");
+	TEST(false, ctx.releaseMount(mount3), "Unmount testData/nonexistentdir -> /five (expected fail)");
+	
 	TEST_RESULTS();
 	TEST_RETURN();
 }

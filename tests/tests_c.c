@@ -119,6 +119,9 @@ int test_c_api() {
 		lfs_release_work_item(ctx, dirDeleteTest);
 	}
 
+	TEST(true, lfs_release_mount(ctx, mount2), "Unmount testData/testroot2 -> /four");
+	TEST(false, lfs_release_mount(ctx, mount3), "Unmount testData/nonexistentdir -> /five (expected fail)");
+
 	lfs_context_destroy(ctx);
 	
 	TEST_RESULTS();

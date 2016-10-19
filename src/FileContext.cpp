@@ -5,6 +5,7 @@
 
 #include "device/Directory.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #include <malloc.h>
@@ -100,15 +101,13 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 	i._deleteDir = &DirectoryDevice::deleteDir;
 
 	registerDeviceInterface(i);
-
-	// create processing thread
-	_processing = true;
-	_processingThread = std::thread(&FileContext::processingFunc, this);
+	
+	_processing = false;
+	startProcessingThread();
 }
 
 FileContext::~FileContext() {
-	_processing = false;
-	_processingThread.join();
+	stopProcessingThread();
 
 	for (MountInfo *m : _mounts) {
 		_alloc.free(_alloc.allocator, m->_prefix);
@@ -121,6 +120,20 @@ FileContext::~FileContext() {
 	for (DeviceInterface *i : _interfaces) {
 		i->~DeviceInterface();
 		_alloc.free(_alloc.allocator, i);
+	}
+}
+
+void FileContext::startProcessingThread() {
+	if (!_processing) {
+		_processing = true;
+		_processingThread = std::thread(&FileContext::processingFunc, this);
+	}
+}
+
+void FileContext::stopProcessingThread() {
+	if (_processing) {
+		_processing = false;
+		_processingThread.join();
 	}
 }
 
@@ -166,6 +179,22 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 	
 	resultCode = result;
 	return m;
+}
+
+bool FileContext::releaseMount(Mount mount) {
+	bool result = false;
+	stopProcessingThread();
+	
+	auto it = std::find(_mounts.begin(), _mounts.end(), mount);
+	if (it != _mounts.end()) {
+		(*it)->~MountInfo();
+		_alloc.free(_alloc.allocator, *it);
+		_mounts.erase(it);
+		result = true;
+	}
+
+	startProcessingThread();
+	return result;
 }
 
 FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const char **devicePath) {

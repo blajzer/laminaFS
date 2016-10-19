@@ -135,6 +135,10 @@ LFS_C_API void lfs_work_item_free_buffer(struct lfs_work_item_t *workItem);
 //! @param workItem the WorkItem to wait for
 LFS_C_API void lfs_wait_for_work_item(struct lfs_work_item_t *workItem);
 
+//! Whether or not a work item has completed processing.
+//! @param workItem the WorkItem to query
+LFS_C_API bool lfs_work_item_completed(struct lfs_work_item_t *workItem);
+
 //! Releases a WorkItem.
 //! @param ctx the context
 //! @param workItem the WorkItem to release.

@@ -69,6 +69,10 @@ uint64_t WorkItemGetBytes(WorkItem *workItem) {
 	return workItem->_bufferBytes;
 }
 
+bool WorkItemCompleted(WorkItem *workItem) {
+	return workItem->_completed;
+}
+
 void WaitForWorkItem(WorkItem *workItem) {
 	while (!workItem->_completed)
 		std::this_thread::yield();

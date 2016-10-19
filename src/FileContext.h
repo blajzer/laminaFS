@@ -42,6 +42,10 @@ extern uint64_t WorkItemGetBytes(WorkItem *workItem);
 //! @param workItem the WorkItem
 extern void WorkItemFreeBuffer(WorkItem *workItem);
 
+//! Whether or not a work item has completed processing.
+//! @param workItem the WorkItem to query
+extern bool WorkItemCompleted(WorkItem *workItem);
+
 //! Waits for a WorkItem to finish processing.
 //! @param workItem the WorkItem to wait for
 extern void WaitForWorkItem(WorkItem *workItem);

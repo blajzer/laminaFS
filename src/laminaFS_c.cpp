@@ -71,6 +71,10 @@ void lfs_work_item_free_buffer(lfs_work_item_t *workItem) {
 	WorkItemFreeBuffer(workItem);
 }
 
+bool lfs_work_item_completed(lfs_work_item_t *workItem) {
+	return WorkItemCompleted(workItem);
+}
+
 void lfs_wait_for_work_item(lfs_work_item_t *workItem) {
 	WaitForWorkItem(workItem);
 }

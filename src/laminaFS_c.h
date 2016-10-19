@@ -51,8 +51,16 @@ struct lfs_device_interface_t {
 // FileContext functions
 
 //! Creates a file context.
+//! @param allocator the allocator interface to use
 //! @return the context
 LFS_C_API lfs_context_t lfs_context_create(struct lfs_allocator_t *allocator);
+
+//! Creates a file context and specify ringbuffer and pool capacities.
+//! @param allocator the allocator interface to use
+//! @param maxQueuedWorkItems the size of the queue ringbuffer
+//! @param workItemPoolSize the maximum number of work items
+//! @return the context
+LFS_C_API lfs_context_t lfs_context_create_capacity(struct lfs_allocator_t *allocator, uint64_t maxQueuedWorkItems, uint64_t workItemPoolSize);
 
 //! Destroys a file context
 //! @param ctx the context to destroy

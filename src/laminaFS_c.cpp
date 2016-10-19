@@ -13,6 +13,11 @@ lfs_context_t lfs_context_create(lfs_allocator_t *allocator) {
 	return lfs_context_t{ new(mem) FileContext(*allocator) };
 }
 
+lfs_context_t lfs_context_create_capacity(lfs_allocator_t *allocator, uint64_t maxQueuedWorkItems, uint64_t workItemPoolSize) {
+	void *mem = allocator->alloc(allocator->allocator, sizeof(FileContext), alignof(FileContext));
+	return lfs_context_t{ new(mem) FileContext(*allocator, maxQueuedWorkItems, workItemPoolSize) };
+}
+
 void lfs_context_destroy(lfs_context_t ctx) {
 	lfs_allocator_t alloc = CTX(ctx)->getAllocator();
 	CTX(ctx)->~FileContext();

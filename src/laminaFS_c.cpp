@@ -23,8 +23,8 @@ int32_t lfs_register_device_interface(lfs_context_t ctx, lfs_device_interface_t 
 	return CTX(ctx)->registerDeviceInterface(*reinterpret_cast<FileContext::DeviceInterface*>(interface));
 }
 
-lfs_error_code_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath) {
-	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath);
+lfs_mount_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, lfs_error_code_t *returnCode) {
+	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath, *returnCode);
 }
 
 lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, lfs_allocator_t *alloc) {

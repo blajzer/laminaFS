@@ -16,9 +16,16 @@ int test_cpp_api() {
 	FileContext ctx(laminaFS::DefaultAllocator);
 
 	// test creating mounts
-	TEST(LFS_OK, ctx.createMount(0, "/", "testData/testroot"), "Mount testData/testroot -> /");
-	TEST(LFS_OK, ctx.createMount(0, "/four", "testData/testroot2"), "Mount testData/testroot2 -> /four");
-	TEST(LFS_NOT_FOUND, ctx.createMount(0, "/five", "testData/nonexistentdir"), "Mount testData/nonexistentdir -> /five (expected fail)");
+	ErrorCode resultCode;
+
+	Mount mount1 = ctx.createMount(0, "/", "testData/testroot", resultCode);
+	TEST(LFS_OK, resultCode, "Mount testData/testroot -> /");
+
+	Mount mount2 = ctx.createMount(0, "/four", "testData/testroot2", resultCode);
+	TEST(LFS_OK, resultCode, "Mount testData/testroot2 -> /four");
+
+	Mount mount3 = ctx.createMount(0, "/five", "testData/nonexistentdir", resultCode);
+	TEST(LFS_NOT_FOUND, resultCode, "Mount testData/nonexistentdir -> /five (expected fail)");
 
 	// test reading
 	{

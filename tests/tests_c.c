@@ -14,9 +14,15 @@ int test_c_api() {
 	lfs_context_t ctx = lfs_context_create(&lfs_default_allocator);
 
 	// test creating mounts
-	TEST(LFS_OK, lfs_create_mount(ctx, 0, "/", "testData/testroot"), "Mount testData/testroot -> /");
-	TEST(LFS_OK, lfs_create_mount(ctx, 0, "/four", "testData/testroot2"), "Mount testData/testroot2 -> /four");
-	TEST(LFS_NOT_FOUND, lfs_create_mount(ctx, 0, "/five", "testData/nonexistentdir"), "Mount testData/nonexistentdir -> /five (expected fail)");
+	enum lfs_error_code_t resultCode;
+	lfs_mount_t mount1 = lfs_create_mount(ctx, 0, "/", "testData/testroot", &resultCode);
+	TEST(LFS_OK, resultCode, "Mount testData/testroot -> /");
+
+	lfs_mount_t mount2 = lfs_create_mount(ctx, 0, "/four", "testData/testroot2", &resultCode);
+	TEST(LFS_OK, resultCode, "Mount testData/testroot2 -> /four");
+
+	lfs_mount_t mount3 = lfs_create_mount(ctx, 0, "/five", "testData/nonexistentdir", &resultCode);
+	TEST(LFS_NOT_FOUND, resultCode, "Mount testData/nonexistentdir -> /five (expected fail)");
 
 	// test reading
 	{

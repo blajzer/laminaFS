@@ -19,9 +19,42 @@ typedef lfs_error_code_t ErrorCode;
 typedef lfs_work_item_t WorkItem;
 typedef lfs_allocator_t Allocator;
 typedef lfs_work_item_callback_t WorkItemCallback;
+typedef void* Mount;
 
 extern Allocator DefaultAllocator;
 
+// C++ Allocator Adapter
+template <class T>
+struct AllocatorAdapter {
+	typedef T value_type;
+	AllocatorAdapter() noexcept : _alloc(DefaultAllocator) {}
+	AllocatorAdapter(Allocator &alloc) noexcept : _alloc(alloc) {}
+
+	template <class U>
+	AllocatorAdapter(const AllocatorAdapter<U>& other) noexcept {
+		_alloc = other._alloc;
+	}
+
+	T* allocate(std::size_t n) {
+		return static_cast<T*>(_alloc.alloc(_alloc.allocator, sizeof(T) * n, alignof(T)));
+	}
+
+	void deallocate(T* p, std::size_t n) {
+		_alloc.free(_alloc.allocator, p);
+	}
+
+	Allocator _alloc;
+};
+
+template <class T, class U>
+bool operator==(const AllocatorAdapter<T> &a, const AllocatorAdapter<U> &b) {
+	return a._alloc == b._alloc;
+}
+
+template <class T, class U>
+bool operator!=(const AllocatorAdapter<T> &a, const AllocatorAdapter<U> &b) {
+	return a._alloc != b._alloc;
+}
 
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem
@@ -100,8 +133,9 @@ public:
 	//! @param deviceType the device type, as returned by registerDeviceInterface()
 	//! @param mountPoint the virtual path to mount this device to
 	//! @param devicePath the path to pass into the device
-	//! @return the return code, 0 on success
-	ErrorCode createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath);
+	//! @param returnCode the return code
+	//! @return the mount
+	Mount createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &returnCode);
 
 	// TODO: releaseMount
 
@@ -145,7 +179,7 @@ public:
 	//! @return a WorkItem representing the work to be done
 	WorkItem *createDir(const char *path);
 	
-	//! Deletes a directory.
+	//! Deletes a directory and all contained files/directories.
 	//! @param path the path to the directory to delete
 	//! @return a WorkItem representing the work to be done
 	WorkItem *deleteDir(const char *path);
@@ -169,23 +203,23 @@ public:
 	//! The type index of the Directory device. It will always be the first interface.
 	static const uint32_t kDirectoryDeviceIndex = 0;
 private:
-	struct Mount {
+	struct MountInfo {
 		char *_prefix;
 		void *_device;
 		DeviceInterface *_interface;
 		uint32_t _prefixLen;
 	};
 
-	Mount* findMountAndPath(const char *path, const char **devicePath);
-	Mount* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
-	
+	MountInfo* findMountAndPath(const char *path, const char **devicePath);
+	MountInfo* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
+
 	WorkItem *allocWorkItemCommon(const char *path, uint32_t op);
 
 	static void processingFunc(FileContext *ctx);
 
 	// TODO: replace with flat arrays allocated through the allocator?
-	std::vector<DeviceInterface> _interfaces;
-	std::vector<Mount> _mounts;
+	std::vector<DeviceInterface*, AllocatorAdapter<DeviceInterface*>> _interfaces;
+	std::vector<MountInfo*, AllocatorAdapter<MountInfo*>> _mounts;
 
 	util::PoolAllocator<WorkItem> _workItemPool;
 	util::RingBuffer<WorkItem*> _workItemQueue;

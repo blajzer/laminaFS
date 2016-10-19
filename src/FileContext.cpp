@@ -82,7 +82,9 @@ void WaitForWorkItem(WorkItem *workItem) {
 }
 
 FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t workItemPoolSize)
-: _workItemPool(alloc, workItemPoolSize)
+: _interfaces(AllocatorAdapter<DeviceInterface*>(alloc))
+, _mounts(AllocatorAdapter<MountInfo*>(alloc))
+, _workItemPool(alloc, workItemPoolSize)
 , _workItemQueue(alloc, maxQueuedWorkItems)
 , _alloc(alloc)
 {
@@ -108,9 +110,17 @@ FileContext::~FileContext() {
 	_processing = false;
 	_processingThread.join();
 
-	for (Mount &m : _mounts) {
-		_alloc.free(_alloc.allocator, m._prefix);
-		m._interface->_destroy(m._device);
+	for (MountInfo *m : _mounts) {
+		_alloc.free(_alloc.allocator, m->_prefix);
+		m->_interface->_destroy(m->_device);
+
+		m->~MountInfo();
+		_alloc.free(_alloc.allocator, m);
+	}
+	
+	for (DeviceInterface *i : _interfaces) {
+		i->~DeviceInterface();
+		_alloc.free(_alloc.allocator, i);
 	}
 }
 
@@ -124,54 +134,59 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 		interface._readFile != nullptr)
 	{
 		result = _interfaces.size();
-		_interfaces.push_back(interface);	
+		DeviceInterface *newInterface = new(_alloc.alloc(_alloc.allocator, sizeof(DeviceInterface), alignof(DeviceInterface))) DeviceInterface(interface);
+		_interfaces.push_back(newInterface);	
 	}
 
 	return result;
 }
 
-ErrorCode FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath) {
+Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &resultCode) {
 	ErrorCode result = LFS_OK;
-	Mount m;
+	MountInfo *m = new(_alloc.alloc(_alloc.allocator, sizeof(MountInfo), alignof(MountInfo))) MountInfo();
 
-	DeviceInterface *interface = &(_interfaces[deviceType]);
-	result = interface->_create(&_alloc, devicePath, &m._device);
-	m._interface = interface;
+	DeviceInterface *interface = _interfaces[deviceType];
+	result = interface->_create(&_alloc, devicePath, &m->_device);
+	m->_interface = interface;
 
-	if (result == LFS_OK && m._device) {
+	if (result == LFS_OK && m->_device) {
 		size_t mountLen = strlen(mountPoint);
-		m._prefix = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * (mountLen + 1), alignof(char)));
-		m._prefixLen = mountLen;
-		strcpy(m._prefix, mountPoint);
+		m->_prefix = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * (mountLen + 1), alignof(char)));
+		m->_prefixLen = mountLen;
+		strcpy(m->_prefix, mountPoint);
 
 		_mounts.push_back(m);
 		LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
 	} else {
+		m->~MountInfo();
+		_alloc.free(_alloc.allocator, m);
+		m = nullptr;
 		LOG("unable to mount device %u:%s on %s\n", deviceType, devicePath, mountPoint);
 	}
 	
-	return result;
+	resultCode = result;
+	return m;
 }
 
-FileContext::Mount* FileContext::findMountAndPath(const char *path, const char **devicePath) {
+FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const char **devicePath) {
 	LOG("searching for file %s\n", path);
 
 	*devicePath = nullptr;
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {
-		const char *foundMount = strstr(path, mount->_prefix);
-		if (foundMount && foundMount == path && (path[mount->_prefixLen] == '/' || mount->_prefixLen == 1)) {
-			LOG("  found matching mount %s\n", mount->_prefix);
+		const char *foundMount = strstr(path, (*mount)->_prefix);
+		if (foundMount && foundMount == path && (path[(*mount)->_prefixLen] == '/' || (*mount)->_prefixLen == 1)) {
+			LOG("  found matching mount %s\n", (*mount)->_prefix);
 
-			*devicePath = mount->_prefixLen == 1 ? path : path + mount->_prefixLen;
-			bool exists = mount->_interface->_fileExists(mount->_device, *devicePath);
+			*devicePath = (*mount)->_prefixLen == 1 ? path : path + (*mount)->_prefixLen;
+			bool exists = (*mount)->_interface->_fileExists((*mount)->_device, *devicePath);
 
 			if (!exists) {
 				*devicePath = nullptr;
 				continue;
 			} else {
-				return &(*mount);
+				return *mount;
 				break;
 			}
 		}
@@ -180,27 +195,27 @@ FileContext::Mount* FileContext::findMountAndPath(const char *path, const char *
 	return nullptr;
 }
 
-FileContext::Mount* FileContext::findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op) {
+FileContext::MountInfo* FileContext::findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op) {
 	LOG("searching for writable mount for %s\n", path);
 
 	*devicePath = nullptr;
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {
-		const char *foundMount = strstr(path, mount->_prefix);
-		if (foundMount && foundMount == path && (path[mount->_prefixLen] == '/' || mount->_prefixLen == 1)) {
-			LOG("  found matching mount %s\n", mount->_prefix);
+		const char *foundMount = strstr(path, (*mount)->_prefix);
+		if (foundMount && foundMount == path && (path[(*mount)->_prefixLen] == '/' || (*mount)->_prefixLen == 1)) {
+			LOG("  found matching mount %s\n", (*mount)->_prefix);
 
-			*devicePath = mount->_prefixLen == 1 ? path : path + mount->_prefixLen;
+			*devicePath = (*mount)->_prefixLen == 1 ? path : path + (*mount)->_prefixLen;
 
-			if ( ((op == LFS_OP_WRITE || op == LFS_OP_APPEND) && mount->_interface->_writeFile == nullptr)
-			|| (op == LFS_OP_DELETE && mount->_interface->_deleteFile == nullptr)
-			|| (op == LFS_OP_CREATE_DIR && mount->_interface->_createDir == nullptr)
-			|| (op == LFS_OP_DELETE_DIR && mount->_interface->_deleteDir == nullptr)) {
+			if ( ((op == LFS_OP_WRITE || op == LFS_OP_APPEND) && (*mount)->_interface->_writeFile == nullptr)
+			|| (op == LFS_OP_DELETE && (*mount)->_interface->_deleteFile == nullptr)
+			|| (op == LFS_OP_CREATE_DIR && (*mount)->_interface->_createDir == nullptr)
+			|| (op == LFS_OP_DELETE_DIR && (*mount)->_interface->_deleteDir == nullptr)) {
 				*devicePath = nullptr;
 				continue;
 			} else {
-				return &(*mount);
+				return *mount;
 				break;
 			}
 		}
@@ -216,7 +231,7 @@ void FileContext::releaseWorkItem(WorkItem *workItem) {
 
 WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op) {
 	WorkItem *item = _workItemPool.alloc();
-	
+
 	if (item) {
 		item->_operation = static_cast<lfs_file_operation_t>(op);
 		item->_filename = path;
@@ -228,7 +243,7 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op) {
 
 WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ);
-	
+
 	if (item) {
 		item->_allocator = alloc ? alloc : &_alloc;
 
@@ -240,7 +255,7 @@ WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc) {
 
 WorkItem *FileContext::writeFile(const char *filepath, void *buffer, uint64_t bufferBytes) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE);
-	
+
 	if (item) {
 		item->_buffer = buffer;
 		item->_bufferBytes = bufferBytes;
@@ -253,7 +268,7 @@ WorkItem *FileContext::writeFile(const char *filepath, void *buffer, uint64_t bu
 
 WorkItem *FileContext::appendFile(const char *filepath, void *buffer, uint64_t bufferBytes) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND);
-	
+
 	if (item) {
 		item->_buffer = buffer;
 		item->_bufferBytes = bufferBytes;
@@ -266,7 +281,7 @@ WorkItem *FileContext::appendFile(const char *filepath, void *buffer, uint64_t b
 
 WorkItem *FileContext::fileExists(const char *filepath) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_EXISTS);
-	
+
 	if (item) {
 		_workItemQueue.push(item);
 	}
@@ -276,7 +291,7 @@ WorkItem *FileContext::fileExists(const char *filepath) {
 
 WorkItem *FileContext::fileSize(const char *filepath) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_SIZE);
-	
+
 	if (item) {
 		_workItemQueue.push(item);
 	}
@@ -286,7 +301,7 @@ WorkItem *FileContext::fileSize(const char *filepath) {
 
 WorkItem *FileContext::deleteFile(const char *filepath) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_DELETE);
-	
+
 	if (item) {
 		_workItemQueue.push(item);
 	}
@@ -296,7 +311,7 @@ WorkItem *FileContext::deleteFile(const char *filepath) {
 
 WorkItem *FileContext::createDir(const char *path) {
 	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR);
-	
+
 	if (item) {
 		_workItemQueue.push(item);
 	}
@@ -306,7 +321,7 @@ WorkItem *FileContext::createDir(const char *path) {
 
 WorkItem *FileContext::deleteDir(const char *path) {
 	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR);
-	
+
 	if (item) {
 		_workItemQueue.push(item);
 	}
@@ -322,14 +337,14 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_EXISTS:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMountAndPath(item->_filename, &devicePath);
+				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				item->_resultCode = mount ? LFS_OK : LFS_NOT_FOUND;
 				break;
 			}
 			case LFS_OP_SIZE:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMountAndPath(item->_filename, &devicePath);
+				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
 					item->_bufferBytes = mount->_interface->_fileSize(mount->_device, devicePath);
 					item->_resultCode = LFS_OK;
@@ -341,7 +356,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_READ:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMountAndPath(item->_filename, &devicePath);
+				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
 					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, item->_allocator, &item->_buffer);
 					item->_resultCode = LFS_OK;
@@ -354,7 +369,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_APPEND:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
+				MountInfo *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
 					item->_bufferBytes = mount->_interface->_writeFile(mount->_device, devicePath, item->_buffer, item->_bufferBytes, item->_operation == LFS_OP_APPEND);
 					item->_resultCode = LFS_OK;
@@ -366,7 +381,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_DELETE:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
+				MountInfo *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
 					item->_resultCode = mount->_interface->_deleteFile(mount->_device, devicePath);
 				} else {
@@ -377,7 +392,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_CREATE_DIR:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
+				MountInfo *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
 					item->_resultCode = mount->_interface->_createDir(mount->_device, devicePath);
 				} else {
@@ -388,7 +403,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_DELETE_DIR:
 			{
 				const char *devicePath;
-				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
+				MountInfo *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
 					item->_resultCode = mount->_interface->_deleteDir(mount->_device, devicePath);
 				} else {

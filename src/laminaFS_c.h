@@ -18,6 +18,7 @@
 typedef struct lfs_file_context_s { void *_value; } lfs_context_t;
 typedef void* lfs_file_handle_t;
 typedef int (*lfs_log_func_t)(const char *, ...);
+typedef void* lfs_mount_t;
 
 // device function pointer types
 typedef enum lfs_error_code_t (*lfs_device_create_func_t)(struct lfs_allocator_t *, const char *, void **);
@@ -67,7 +68,9 @@ LFS_C_API int32_t lfs_register_device_interface(lfs_context_t ctx, struct lfs_de
 //! @param deviceType the type index of the device to create the mount with
 //! @param mountPoint the virtual path to mount this device to
 //! @param devicePath the path to pass into the device
-LFS_C_API enum lfs_error_code_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath);
+//! @param returnCode the return code
+//! @return the mount
+LFS_C_API lfs_mount_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, enum lfs_error_code_t *returnCode);
 
 //! Reads the entirety of a file.
 //! @param ctx the context
@@ -122,7 +125,7 @@ LFS_C_API struct lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char 
 //! @return a WorkItem representing the work to be done
 LFS_C_API struct lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path);
 
-//! Deletes a directory.
+//! Deletes a directory and all contained files/directories.
 //! @param ctx the context
 //! @param path the path to the file to delete
 //! @return a WorkItem representing the work to be done

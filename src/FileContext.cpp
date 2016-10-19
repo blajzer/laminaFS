@@ -20,6 +20,8 @@ enum lfs_file_operation_t {
 	LFS_OP_WRITE,
 	LFS_OP_APPEND,
 	LFS_OP_DELETE,
+	LFS_OP_CREATE_DIR,
+	LFS_OP_DELETE_DIR,
 };
 
 struct lfs_work_item_t {
@@ -92,6 +94,8 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 	i._readFile = &DirectoryDevice::readFile;
 	i._writeFile = &DirectoryDevice::writeFile;
 	i._deleteFile = &DirectoryDevice::deleteFile;
+	i._createDir = &DirectoryDevice::createDir;
+	i._deleteDir = &DirectoryDevice::deleteDir;
 
 	registerDeviceInterface(i);
 
@@ -190,7 +194,9 @@ FileContext::Mount* FileContext::findMutableMountAndPath(const char *path, const
 			*devicePath = mount->_prefixLen == 1 ? path : path + mount->_prefixLen;
 
 			if ( ((op == LFS_OP_WRITE || op == LFS_OP_APPEND) && mount->_interface->_writeFile == nullptr)
-			|| (op == LFS_OP_DELETE && mount->_interface->_deleteFile == nullptr)) {
+			|| (op == LFS_OP_DELETE && mount->_interface->_deleteFile == nullptr)
+			|| (op == LFS_OP_CREATE_DIR && mount->_interface->_createDir == nullptr)
+			|| (op == LFS_OP_DELETE_DIR && mount->_interface->_deleteDir == nullptr)) {
 				*devicePath = nullptr;
 				continue;
 			} else {
@@ -288,6 +294,25 @@ WorkItem *FileContext::deleteFile(const char *filepath) {
 	return item;
 }
 
+WorkItem *FileContext::createDir(const char *path) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR);
+	
+	if (item) {
+		_workItemQueue.push(item);
+	}
+
+	return item;
+}
+
+WorkItem *FileContext::deleteDir(const char *path) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR);
+	
+	if (item) {
+		_workItemQueue.push(item);
+	}
+
+	return item;
+}
 
 void FileContext::processingFunc(FileContext *ctx) {
 	while(ctx->_processing) {
@@ -344,6 +369,28 @@ void FileContext::processingFunc(FileContext *ctx) {
 				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
 					item->_resultCode = mount->_interface->_deleteFile(mount->_device, devicePath);
+				} else {
+					item->_resultCode = LFS_UNSUPPORTED;
+				}
+				break;
+			}
+			case LFS_OP_CREATE_DIR:
+			{
+				const char *devicePath;
+				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
+				if (mount) {
+					item->_resultCode = mount->_interface->_createDir(mount->_device, devicePath);
+				} else {
+					item->_resultCode = LFS_UNSUPPORTED;
+				}
+				break;
+			}
+			case LFS_OP_DELETE_DIR:
+			{
+				const char *devicePath;
+				Mount *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
+				if (mount) {
+					item->_resultCode = mount->_interface->_deleteDir(mount->_device, devicePath);
 				} else {
 					item->_resultCode = LFS_UNSUPPORTED;
 				}

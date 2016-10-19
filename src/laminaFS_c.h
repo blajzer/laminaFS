@@ -27,6 +27,8 @@ typedef size_t (*lfs_device_file_size_func_t)(void *, const char *);
 typedef size_t (*lfs_device_read_file_func_t)(void *, const char *, struct lfs_allocator_t *, void **);
 typedef size_t (*lfs_device_write_file_func_t)(void *, const char *, void *, size_t, bool);
 typedef enum lfs_error_code_t (*lfs_device_delete_file_func_t)(void *, const char *);
+typedef enum lfs_error_code_t (*lfs_device_create_dir_func_t)(void *, const char *);
+typedef enum lfs_error_code_t (*lfs_device_delete_dir_func_t)(void *, const char *);
 
 // structs
 struct lfs_device_interface_t {
@@ -41,6 +43,8 @@ struct lfs_device_interface_t {
 	// optional
 	lfs_device_write_file_func_t _writeFile;
 	lfs_device_delete_file_func_t _deleteFile;
+	lfs_device_create_dir_func_t _createDir;
+	lfs_device_delete_dir_func_t _deleteDir;
 };
 
 // FileContext functions
@@ -111,6 +115,18 @@ LFS_C_API struct lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *f
 //! @param filepath the path to the file to delete
 //! @return a WorkItem representing the work to be done
 LFS_C_API struct lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath);
+
+//! Creates a directory.
+//! @param ctx the context
+//! @param path the path to the directory to create
+//! @return a WorkItem representing the work to be done
+LFS_C_API struct lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path);
+
+//! Deletes a directory.
+//! @param ctx the context
+//! @param path the path to the file to delete
+//! @return a WorkItem representing the work to be done
+LFS_C_API struct lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path);
 
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem

@@ -24,10 +24,14 @@ public:
 
 	static size_t writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append);
 	static ErrorCode deleteFile(void *device, const char *filePath);
+	
+	
+	static ErrorCode createDir(void *device, const char *path);
+	static ErrorCode deleteDir(void *device, const char *path);
 
 private:
 	FILE *openFile(const char *filePath, const char *modeString);
-	char *getDevicePath(const char *filePath);
+	char *getDevicePath(const char *filePath, bool extraNull = false);
 	void freeDevicePath(char *path);
 
 	Allocator *_alloc;

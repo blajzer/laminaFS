@@ -72,6 +72,9 @@ public:
 
 		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
+		
+		typedef ErrorCode (*CreateDirFunc)(void *, const char *);
+		typedef ErrorCode (*DeleteDirFunc)(void *, const char *);
 
 		// required
 		CreateFunc _create = nullptr;
@@ -84,6 +87,8 @@ public:
 		// optional
 		WriteFileFunc _writeFile = nullptr;
 		DeleteFileFunc _deleteFile = nullptr;
+		CreateDirFunc _createDir = nullptr;
+		DeleteDirFunc _deleteDir = nullptr;
 	};
 
 	//! Registers a new device interface.
@@ -134,6 +139,16 @@ public:
 	//! @param filepath the path to the file to delete
 	//! @return a WorkItem representing the work to be done
 	WorkItem *deleteFile(const char *filepath);
+	
+	//! Creates a directory.
+	//! @param path the path to the directory to create
+	//! @return a WorkItem representing the work to be done
+	WorkItem *createDir(const char *path);
+	
+	//! Deletes a directory.
+	//! @param path the path to the directory to delete
+	//! @return a WorkItem representing the work to be done
+	WorkItem *deleteDir(const char *path);
 
 	//! Releases a WorkItem.
 	//! @param workItem the WorkItem to release.

@@ -55,6 +55,14 @@ lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath) {
 	return CTX(ctx)->deleteFile(filepath);
 }
 
+lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path) {
+	return CTX(ctx)->createDir(path);
+}
+
+lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path) {
+	return CTX(ctx)->deleteDir(path);
+}
+
 lfs_error_code_t lfs_work_item_get_result(lfs_work_item_t *workItem) {
 	return WorkItemGetResult(workItem);
 }

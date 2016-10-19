@@ -23,8 +23,11 @@ struct lfs_allocator_t {
 
 enum lfs_error_code_t {
 	LFS_OK = 0,
+	LFS_GENERIC_ERROR,
 	LFS_NOT_FOUND,
 	LFS_UNSUPPORTED,
+	LFS_ALREADY_EXISTS,
+	LFS_PERMISSIONS_ERROR,
 };
 
 // default allocator

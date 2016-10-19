@@ -70,7 +70,7 @@ int test_cpp_api() {
 
 		ctx.releaseWorkItem(sizeTest);
 	}
-	
+
 	// test deleting
 	{
 		WorkItem *deleteTest = ctx.deleteFile("/two/test.txt");
@@ -78,6 +78,41 @@ int test_cpp_api() {
 		TEST(LFS_OK, WorkItemGetResult(deleteTest), "Delete file /two/test.txt");
 
 		ctx.releaseWorkItem(deleteTest);
+	}
+
+	// test directory creation
+	{
+		WorkItem *dirCreateTest = ctx.createDir("/two/testDir");
+		WorkItem *dirCreateTest1 = ctx.createDir("/two/testDir/nested");
+		WorkItem *dirCreateTest2 = ctx.createDir("/two/testDir/nested/even_more");
+		WorkItem *dirCreateTest3 = ctx.createDir("/two/testDir/nested/even_more/so_deep");
+
+		// Work items are sequential, only need to wait on the last one
+		WaitForWorkItem(dirCreateTest3);
+
+		TEST(LFS_OK, WorkItemGetResult(dirCreateTest), "Create dir /two/testDir");
+		TEST(LFS_OK, WorkItemGetResult(dirCreateTest1), "Create dir /two/testDir/nested");
+		TEST(LFS_OK, WorkItemGetResult(dirCreateTest2), "Create dir /two/testDir/nested/even_more");
+		TEST(LFS_OK, WorkItemGetResult(dirCreateTest3), "Create dir /two/testDir/nested/even_more/so_deep");
+
+		ctx.releaseWorkItem(dirCreateTest);
+		ctx.releaseWorkItem(dirCreateTest1);
+		ctx.releaseWorkItem(dirCreateTest2);	
+		ctx.releaseWorkItem(dirCreateTest3);
+	}
+	
+	// test directory deletion
+	{
+		// write a file in the test directory first
+		WorkItem *writeTest = ctx.writeFile("/two/testDir/nested/even_more/test.txt", const_cast<char *>(testString), strlen(testString));
+		TEST(LFS_OK, WorkItemGetResult(writeTest), "Write file /two/testDir/nested/even_more/test.txt");
+	
+		WorkItem *dirDeleteTest = ctx.deleteDir("/two/testDir");
+		WaitForWorkItem(dirDeleteTest);
+		TEST(LFS_OK, WorkItemGetResult(dirDeleteTest), "Delete dir /two/testDir");
+
+		ctx.releaseWorkItem(writeTest);
+		ctx.releaseWorkItem(dirDeleteTest);
 	}
 	
 	TEST_RESULTS();

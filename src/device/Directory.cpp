@@ -45,7 +45,7 @@ DirectoryDevice::DirectoryDevice(Allocator *allocator, const char *path) {
 	_alloc = allocator;
 
 	// TODO: realpath()
-	_pathLen = strlen(path);
+	_pathLen = static_cast<uint32_t>(strlen(path));
 	_devicePath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * (_pathLen + 1), alignof(char)));
 	strcpy_s(_devicePath, _pathLen + 1, path);
 }
@@ -85,7 +85,7 @@ FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 }
 
 char *DirectoryDevice::getDevicePath(const char *filePath, bool extraNull) {
-	uint32_t diskPathLen = _pathLen + strlen(filePath) + (extraNull ? 2 : 1);
+	uint32_t diskPathLen = static_cast<uint32_t>(_pathLen + strlen(filePath) + (extraNull ? 2 : 1));
 	char *diskPath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * diskPathLen, alignof(char)));
 	strcpy_s(diskPath, diskPathLen, _devicePath);
 	strcpy_s(diskPath + _pathLen, diskPathLen - _pathLen, filePath);

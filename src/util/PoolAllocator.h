@@ -16,7 +16,8 @@
 
 #include "shared_types.h"
 
-namespace laminaFS::util {
+namespace laminaFS {
+namespace util {
 
 //! Simple thread-safe pool allocator
 template <typename T>
@@ -92,4 +93,5 @@ private:
 	uint64_t _bitmaskCount = 0;
 };
 
+}
 }

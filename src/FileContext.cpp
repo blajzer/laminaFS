@@ -154,7 +154,7 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 		interface._fileSize != nullptr &&
 		interface._readFile != nullptr)
 	{
-		result = _interfaces.size();
+		result = static_cast<int32_t>(_interfaces.size());
 		DeviceInterface *newInterface = new(_alloc.alloc(_alloc.allocator, sizeof(DeviceInterface), alignof(DeviceInterface))) DeviceInterface(interface);
 		_interfaces.push_back(newInterface);	
 	}
@@ -173,7 +173,7 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 	if (result == LFS_OK && m->_device) {
 		size_t mountLen = strlen(mountPoint);
 		m->_prefix = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * (mountLen + 1), alignof(char)));
-		m->_prefixLen = mountLen;
+		m->_prefixLen = static_cast<uint32_t>(mountLen);
 		strcpy_s(m->_prefix, mountLen + 1, mountPoint);
 
 		_mounts.push_back(m);

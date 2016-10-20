@@ -9,7 +9,8 @@
 
 #include "shared_types.h"
 
-namespace laminaFS::util {
+namespace laminaFS {
+namespace util {
 
 //! Simple ring buffer of a fixed capacity.
 template <typename T>
@@ -103,5 +104,5 @@ private:
 	std::mutex _lock;
 	std::atomic<bool> _full;
 };
-
+}
 }

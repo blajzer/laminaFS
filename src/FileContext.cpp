@@ -30,7 +30,7 @@ enum lfs_file_operation_t {
 struct lfs_work_item_t {
 	lfs_file_operation_t _operation;
 	lfs_work_item_callback_t _callback = nullptr;
-	lfs_allocator_t *_allocator = nullptr;
+	lfs_allocator_t _allocator;
 
 	const char *_filename = nullptr;
 
@@ -73,7 +73,7 @@ void *WorkItemGetBuffer(WorkItem *workItem) {
 }
 
 void WorkItemFreeBuffer(WorkItem *workItem) {
-	workItem->_allocator->free(workItem->_allocator, workItem->_buffer);
+	workItem->_allocator.free(workItem->_allocator.allocator, workItem->_buffer);
 }
 
 uint64_t WorkItemGetBytes(WorkItem *workItem) {
@@ -282,7 +282,7 @@ WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ);
 
 	if (item) {
-		item->_allocator = alloc ? alloc : &_alloc;
+		item->_allocator = alloc ? *alloc : _alloc;
 
 		_workItemQueue.push(item);
 	}
@@ -395,7 +395,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				const char *devicePath;
 				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, item->_allocator, &item->_buffer);
+					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, &item->_allocator, &item->_buffer);
 					item->_resultCode = LFS_OK;
 				} else {
 					item->_resultCode = LFS_NOT_FOUND;

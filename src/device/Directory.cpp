@@ -3,19 +3,30 @@
 
 #include "Directory.h"
 
+#include "platform.h"
+
 #include <cstdio>
 #include <cstring>
 
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <shellapi.h>
+
+#ifndef S_ISDIR
+#define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
+#endif
+
+#ifndef S_ISREG
+#define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
+#endif
+
 #else
 #include <fts.h>
+#include <unistd.h>
 #endif
 
 using namespace laminaFS;
@@ -36,7 +47,7 @@ DirectoryDevice::DirectoryDevice(Allocator *allocator, const char *path) {
 	// TODO: realpath()
 	_pathLen = strlen(path);
 	_devicePath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * (_pathLen + 1), alignof(char)));
-	strcpy(_devicePath, path);
+	strcpy_s(_devicePath, _pathLen + 1, path);
 }
 
 DirectoryDevice::~DirectoryDevice() {
@@ -67,7 +78,8 @@ void DirectoryDevice::destroy(void *device) {
 
 FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 	char *diskPath = getDevicePath(filePath);
-	FILE *file = fopen(diskPath, modeString);
+	FILE *file = nullptr;
+	fopen_s(&file, diskPath, modeString);
 	freeDevicePath(diskPath);
 	return file;
 }
@@ -75,8 +87,8 @@ FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 char *DirectoryDevice::getDevicePath(const char *filePath, bool extraNull) {
 	uint32_t diskPathLen = _pathLen + strlen(filePath) + (extraNull ? 2 : 1);
 	char *diskPath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * diskPathLen, alignof(char)));
-	strcpy(diskPath, _devicePath);
-	strcpy(diskPath + _pathLen, filePath);
+	strcpy_s(diskPath, diskPathLen, _devicePath);
+	strcpy_s(diskPath + _pathLen, diskPathLen - _pathLen, filePath);
 
 	if (extraNull) {
 		diskPath[diskPathLen - 1] = 0;
@@ -167,7 +179,11 @@ ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
 	char *diskPath = dev->getDevicePath(filePath);
 
 	ErrorCode resultCode = LFS_OK;
+#ifdef _WIN32
+	int result = _unlink(diskPath);
+#else
 	int result = unlink(diskPath);
+#endif
 
 	if (result != 0) {
 		switch (errno) {
@@ -194,10 +210,18 @@ ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 	
 	ErrorCode resultCode = LFS_OK;
 #ifdef _WIN32
-	int result = mkdir(diskPath);
+	if (!CreateDirectory(diskPath, nullptr)) {
+		switch (GetLastError()) {
+		case ERROR_ALREADY_EXISTS:
+			resultCode = LFS_ALREADY_EXISTS;
+			break;
+		case ERROR_PATH_NOT_FOUND:
+			resultCode = LFS_NOT_FOUND;
+			break;
+		}
+	}
 #else
 	int result = mkdir(diskPath, DEFFILEMODE | S_IXUSR | S_IXGRP | S_IRWXO);
-#endif
 
 	if (result != 0) {
 		switch (errno) {
@@ -215,6 +239,7 @@ ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 			break;
 		};
 	}
+#endif
 
 	dev->freeDevicePath(diskPath);
 	return resultCode;

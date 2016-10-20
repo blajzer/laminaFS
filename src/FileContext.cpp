@@ -5,9 +5,11 @@
 
 #include "device/Directory.h"
 
+#include "platform.h"
+
 #include <algorithm>
 #include <atomic>
-#include <cstring>
+#include <string.h>
 #include <malloc.h>
 
 using namespace laminaFS;
@@ -40,7 +42,7 @@ struct lfs_work_item_t {
 };
 
 void *default_alloc_func(void *, size_t bytes, size_t alignment) {
-#if defined _WIN32
+#ifdef _WIN32
 	return _aligned_malloc(bytes, alignment);
 #else
 	return memalign(alignment, bytes);
@@ -48,10 +50,16 @@ void *default_alloc_func(void *, size_t bytes, size_t alignment) {
 }
 
 void default_free_func(void *, void *ptr) {
+#ifdef _WIN32
+	_aligned_free(ptr);
+#else
 	free(ptr);
+#endif
 }
 
-lfs_allocator_t lfs_default_allocator = { default_alloc_func, default_free_func, nullptr };
+extern "C" {
+	lfs_allocator_t lfs_default_allocator = { default_alloc_func, default_free_func, nullptr };
+}
 
 namespace laminaFS {
 Allocator DefaultAllocator = lfs_default_allocator;
@@ -166,7 +174,7 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 		size_t mountLen = strlen(mountPoint);
 		m->_prefix = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * (mountLen + 1), alignof(char)));
 		m->_prefixLen = mountLen;
-		strcpy(m->_prefix, mountPoint);
+		strcpy_s(m->_prefix, mountLen + 1, mountPoint);
 
 		_mounts.push_back(m);
 		LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);

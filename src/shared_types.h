@@ -31,4 +31,11 @@ enum lfs_error_code_t {
 };
 
 // default allocator
+#if __cplusplus
+extern "C" {
+	extern struct lfs_allocator_t lfs_default_allocator;
+}
+#else
 extern struct lfs_allocator_t lfs_default_allocator;
+#endif
+

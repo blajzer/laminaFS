@@ -36,40 +36,40 @@ bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount) {
 	return CTX(ctx)->releaseMount(mount);
 }
 
-lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, lfs_allocator_t *alloc) {
-	return CTX(ctx)->readFile(filepath, alloc);
+lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, lfs_allocator_t *alloc, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->readFile(filepath, alloc, callback);
 }
 
-lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath) {
-	return CTX(ctx)->readFile(filepath);
+lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->readFile(filepath, nullptr, callback);
 }
 
-lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes) {
-	return CTX(ctx)->writeFile(filepath, buffer, bufferBytes);
+lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->writeFile(filepath, buffer, bufferBytes, callback);
 }
 
-lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes) {
-	return CTX(ctx)->appendFile(filepath, buffer, bufferBytes);
+lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->appendFile(filepath, buffer, bufferBytes, callback);
 }
 
-lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath) {
-	return CTX(ctx)->fileExists(filepath);
+lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->fileExists(filepath, callback);
 }
 
-lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath) {
-	return CTX(ctx)->fileSize(filepath);
+lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->fileSize(filepath, callback);
 }
 
-lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath) {
-	return CTX(ctx)->deleteFile(filepath);
+lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->deleteFile(filepath, callback);
 }
 
-lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path) {
-	return CTX(ctx)->createDir(path);
+lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->createDir(path, callback);
 }
 
-lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path) {
-	return CTX(ctx)->deleteDir(path);
+lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->deleteDir(path, callback);
 }
 
 lfs_error_code_t lfs_work_item_get_result(lfs_work_item_t *workItem) {

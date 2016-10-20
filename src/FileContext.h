@@ -146,47 +146,55 @@ public:
 	//! Reads the entirety of a file.
 	//! @param filepath the path to the file to read
 	//! @param alloc the allocator to use. If NULL will use the context's allocator.
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *readFile(const char *filepath, Allocator *alloc = nullptr);
+	WorkItem *readFile(const char *filepath, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr);
 	
 	//! Writes a buffer to a file.
 	//! @param filepath the path to the file to write
 	//! @param buffer the buffer to write
 	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *writeFile(const char *filepath, void *buffer, uint64_t bufferBytes);
+	WorkItem *writeFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr);
 
 	//! Appends a buffer to a file.
 	//! @param filepath the path to the file to append
 	//! @param buffer the buffer to write
 	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *appendFile(const char *filepath, void *buffer, uint64_t bufferBytes);
+	WorkItem *appendFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr);
 	
 	//! Determines if a file exists.
 	//! @param filepath the path to the file to delete
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *fileExists(const char *filepath);
+	WorkItem *fileExists(const char *filepath, WorkItemCallback callback = nullptr);
 	
 	//! Gets the size of a file.
 	//! @param filepath the path to the file to delete
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *fileSize(const char *filepath);
+	WorkItem *fileSize(const char *filepath, WorkItemCallback callback = nullptr);
 	
 	//! Deletes a file.
 	//! @param filepath the path to the file to delete
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *deleteFile(const char *filepath);
+	WorkItem *deleteFile(const char *filepath, WorkItemCallback callback = nullptr);
 	
 	//! Creates a directory.
 	//! @param path the path to the directory to create
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *createDir(const char *path);
+	WorkItem *createDir(const char *path, WorkItemCallback callback = nullptr);
 	
 	//! Deletes a directory and all contained files/directories.
 	//! @param path the path to the directory to delete
+	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *deleteDir(const char *path);
+	WorkItem *deleteDir(const char *path, WorkItemCallback callback = nullptr);
 
 	//! Releases a WorkItem.
 	//! @param workItem the WorkItem to release.
@@ -217,7 +225,7 @@ private:
 	MountInfo* findMountAndPath(const char *path, const char **devicePath);
 	MountInfo* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
 
-	WorkItem *allocWorkItemCommon(const char *path, uint32_t op);
+	WorkItem *allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback);
 
 	void startProcessingThread();
 	void stopProcessingThread();

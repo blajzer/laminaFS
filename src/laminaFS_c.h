@@ -91,60 +91,68 @@ LFS_C_API bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount);
 //! @param ctx the context
 //! @param filepath the path to the file to read
 //! @param alloc the allocator to use.
+//! @param callback optional callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, struct lfs_allocator_t *alloc);
+LFS_C_API struct lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback);
 
 //! Reads the entirety of a file and uses the context's allocator.
 //! @param ctx the context
 //! @param filepath the path to the file to read
+//! @param callback optional callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath);
+LFS_C_API struct lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback);
 
 //! Writes a buffer to a file.
 //! @param ctx the context
 //! @param filepath the path to the file to write
 //! @param buffer the buffer to write
 //! @param bufferBytes the number of bytes to write to the buffer
+//! @param callback optional callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes);
+LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback);
 
 //! Appends a buffer to a file.
 //! @param ctx the context
 //! @param filepath the path to the file to append
 //! @param buffer the buffer to write
 //! @param bufferBytes the number of bytes to write to the buffer
+//! @param callback optional callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes);
+LFS_C_API struct lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback);
 	
 //! Determines if a file exists.
 //! @param ctx the context
 //! @param filepath the path to the file to delete
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath);
+LFS_C_API struct lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback);
 
 //! Gets the size of a file.
 //! @param ctx the context
 //! @param filepath the path to the file to delete
+//! @param callback optional callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath);
+LFS_C_API struct lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback);
 
 //! Deletes a file.
 //! @param ctx the context
 //! @param filepath the path to the file to delete
+//! @param callback optional callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath);
+LFS_C_API struct lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback);
 
 //! Creates a directory.
 //! @param ctx the context
 //! @param path the path to the directory to create
+//! @param callback optional callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path);
+LFS_C_API struct lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback);
 
 //! Deletes a directory and all contained files/directories.
 //! @param ctx the context
 //! @param path the path to the file to delete
+//! @param callback optional callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path);
+LFS_C_API struct lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback);
 
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem

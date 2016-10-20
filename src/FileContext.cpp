@@ -266,20 +266,21 @@ void FileContext::releaseWorkItem(WorkItem *workItem) {
 }
 
 
-WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op) {
+WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback) {
 	WorkItem *item = _workItemPool.alloc();
 
 	if (item) {
 		item->_operation = static_cast<lfs_file_operation_t>(op);
 		item->_filename = path;
+		item->_callback = callback;
 		item->_completed = false;
 	}
 	
 	return item;
 }
 
-WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ);
+WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ, callback);
 
 	if (item) {
 		item->_allocator = alloc ? *alloc : _alloc;
@@ -290,8 +291,8 @@ WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc) {
 	return item;
 }
 
-WorkItem *FileContext::writeFile(const char *filepath, void *buffer, uint64_t bufferBytes) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE);
+WorkItem *FileContext::writeFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE, callback);
 
 	if (item) {
 		item->_buffer = buffer;
@@ -303,8 +304,8 @@ WorkItem *FileContext::writeFile(const char *filepath, void *buffer, uint64_t bu
 	return item;
 }
 
-WorkItem *FileContext::appendFile(const char *filepath, void *buffer, uint64_t bufferBytes) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND);
+WorkItem *FileContext::appendFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND, callback);
 
 	if (item) {
 		item->_buffer = buffer;
@@ -316,8 +317,8 @@ WorkItem *FileContext::appendFile(const char *filepath, void *buffer, uint64_t b
 	return item;
 }
 
-WorkItem *FileContext::fileExists(const char *filepath) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_EXISTS);
+WorkItem *FileContext::fileExists(const char *filepath, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_EXISTS, callback);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -326,8 +327,8 @@ WorkItem *FileContext::fileExists(const char *filepath) {
 	return item;
 }
 
-WorkItem *FileContext::fileSize(const char *filepath) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_SIZE);
+WorkItem *FileContext::fileSize(const char *filepath, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_SIZE, callback);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -336,8 +337,8 @@ WorkItem *FileContext::fileSize(const char *filepath) {
 	return item;
 }
 
-WorkItem *FileContext::deleteFile(const char *filepath) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_DELETE);
+WorkItem *FileContext::deleteFile(const char *filepath, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_DELETE, callback);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -346,8 +347,8 @@ WorkItem *FileContext::deleteFile(const char *filepath) {
 	return item;
 }
 
-WorkItem *FileContext::createDir(const char *path) {
-	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR);
+WorkItem *FileContext::createDir(const char *path, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR, callback);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -356,8 +357,8 @@ WorkItem *FileContext::createDir(const char *path) {
 	return item;
 }
 
-WorkItem *FileContext::deleteDir(const char *path) {
-	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR);
+WorkItem *FileContext::deleteDir(const char *path, WorkItemCallback callback) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR, callback);
 
 	if (item) {
 		_workItemQueue.push(item);

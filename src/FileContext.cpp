@@ -195,8 +195,12 @@ bool FileContext::releaseMount(Mount mount) {
 	
 	auto it = std::find(_mounts.begin(), _mounts.end(), mount);
 	if (it != _mounts.end()) {
+		(*it)->_interface->_destroy((*it)->_device);
+		_alloc.free(_alloc.allocator, (*it)->_prefix);
+
 		(*it)->~MountInfo();
 		_alloc.free(_alloc.allocator, *it);
+		
 		_mounts.erase(it);
 		result = true;
 	}

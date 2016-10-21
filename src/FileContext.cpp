@@ -32,7 +32,7 @@ struct lfs_work_item_t {
 	lfs_work_item_callback_t _callback = nullptr;
 	lfs_allocator_t _allocator;
 
-	const char *_filename = nullptr;
+	char *_filename = nullptr;
 
 	void *_buffer = nullptr;
 	uint64_t _bufferBytes = 0;
@@ -261,17 +261,82 @@ FileContext::MountInfo* FileContext::findMutableMountAndPath(const char *path, c
 	return nullptr;
 }
 
-void FileContext::releaseWorkItem(WorkItem *workItem) {
-	_workItemPool.free(workItem);
+void FileContext::normalizePath(char *path) {
+	uint32_t writePos = 0;
+	uint32_t readPos = 0;
+	uint32_t inputLen = static_cast<uint32_t>(strlen(path));
+
+	while (writePos < inputLen) {
+		bool found = false;
+		do {
+			found = false;
+			// handle multiple slashes "//", "///", etc...
+			while (path[readPos] == '/' && path[readPos + 1] == '/') {
+				++readPos;
+				found = true;
+			}
+		
+			// handle parent directory "/.."	
+			while (path[readPos] == '/' && path[readPos + 1] == '.' && path[readPos + 2] == '.') {
+				readPos += 3;
+				while (writePos > 0 && path[writePos - 1] != '/') {
+					--writePos;
+				}
+
+				if (writePos != 0) {
+					--writePos;
+				}
+				found = true;
+			}
+
+			// handle "this" directory "/."	
+			while (path[readPos] == '/' && path[readPos + 1] == '.' && path[readPos + 2] != '.') {
+				readPos += 2;
+				found = true;
+			}
+		} while (found);
+
+		path[writePos] = path[readPos];
+
+		if (path[writePos] == 0) {
+			break;
+		}
+
+		++writePos;
+		++readPos;
+	}
+	
+	// remove trailing slash
+	if (writePos > 1 && path[writePos - 1] == '/') {
+		path[writePos - 1] = 0;
+	}
+	
+	// fixup root slash
+	if (path[0] == 0 && inputLen >= 1) {
+		path[0] = '/';
+		path[1] = 0;
+	}
+
 }
 
+void FileContext::releaseWorkItem(WorkItem *workItem) {
+	_alloc.free(_alloc.allocator, workItem->_filename);
+	_workItemPool.free(workItem);
+}
 
 WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback) {
 	WorkItem *item = _workItemPool.alloc();
 
 	if (item) {
 		item->_operation = static_cast<lfs_file_operation_t>(op);
-		item->_filename = path;
+		
+		size_t pathLen = strlen(path) + 1;
+		char *normalizedPath = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * pathLen, alignof(char)));
+		strcpy_s(normalizedPath, pathLen, path);
+		normalizePath(normalizedPath);
+
+		item->_filename = normalizedPath;
+		
 		item->_callback = callback;
 		item->_completed = false;
 	}

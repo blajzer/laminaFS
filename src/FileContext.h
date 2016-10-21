@@ -212,6 +212,10 @@ public:
 	//! @return the Allocator
 	Allocator &getAllocator() { return _alloc; }
 
+	//! Destructively normalizes a path.
+	//! @param path the path to normalize
+	static void normalizePath(char *path);
+
 	//! The type index of the Directory device. It will always be the first interface.
 	static const uint32_t kDirectoryDeviceIndex = 0;
 private:

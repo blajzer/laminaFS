@@ -13,6 +13,49 @@ const char *testString = "this is the C++ test string.";
 int test_cpp_api() {
 	TEST_INIT();
 
+	// test normalization
+	{
+		char *str1 = strdup("//path//with/a/////lot/of/slashes///");
+		FileContext::normalizePath(str1);
+		TEST(0, strcmp(str1, "/path/with/a/lot/of/slashes"), "Normalize \"//path//with/a/////lot/of/slashes///\"");
+		free(str1);
+	
+		char *str2 = strdup("//path//with/a/////lot/of/slashes///file.txt");
+		FileContext::normalizePath(str2);
+		TEST(0, strcmp(str2, "/path/with/a/lot/of/slashes/file.txt"), "Normalize \"//path//with/a/////lot/of/slashes///file.txt\"");
+		free(str2);
+
+		char *str3 = strdup("///path//with/a/////../lot/of/../../slashes///file.txt");
+		FileContext::normalizePath(str3);
+		TEST(0, strcmp(str3, "/path/with/slashes/file.txt"), "Normalize \"///path//with/a/////../lot/of/../../slashes///file.txt\"");
+		free(str3);
+
+		char *str4 = strdup("/..");
+		FileContext::normalizePath(str4);
+		TEST(0, strcmp(str4, "/"), "Normalize \"/..\"");
+		free(str4);
+	
+		char *str5 = strdup("/////../..");
+		FileContext::normalizePath(str5);
+		TEST(0, strcmp(str5, "/"), "Normalize \"/////../..\"");
+		free(str5);
+	
+		char *str6 = strdup("/////./././../boop/../some_other_dir");
+		FileContext::normalizePath(str6);
+		TEST(0, strcmp(str6, "/some_other_dir"), "Normalize \"/////./././../boop/../some_other_dir\"");
+		free(str6);
+
+		char *str7 = strdup("/////");
+		FileContext::normalizePath(str7);
+		TEST(0, strcmp(str7, "/"), "Normalize \"/////\"");
+		free(str7);
+	
+		char *str8 = strdup("/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/");
+		FileContext::normalizePath(str8);
+		TEST(0, strcmp(str8, "/bringing/it/all/together"), "Normalize \"/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/\"");
+		free(str8);
+	}
+
 	FileContext ctx(laminaFS::DefaultAllocator);
 
 	// test creating mounts

@@ -4,7 +4,13 @@
 #include <laminaFS.h>
 #include "macros.h"
 
+#include <cstring>
+
 using namespace laminaFS;
+
+#ifdef _WIN32
+#define strdup _strdup
+#endif
 
 namespace {
 const char *testString = "this is the C++ test string.";

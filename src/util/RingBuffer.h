@@ -47,15 +47,15 @@ public:
 
 				if (_writePos == _capacity)
 					_writePos = 0;
-			
+
 				if (_writePos == _readPos)
 					_full = true;
-		
+
 				done = true;
 			}
 		}
 	}
-	
+
 	//! Attemps to pop an item. Nonblocking.
 	//! @param defaultValue the value to return if the buffer is empty
 	//! @return an item or the default value
@@ -80,18 +80,18 @@ public:
 
 	//! Gets the current number of items in the buffer.
 	//! @return the current number of items
-	uint64_t getCount() const {
-		std::lock_guard<std::mutex>(_lock);
+	uint64_t getCount() {
+		std::lock_guard<std::mutex> lock(_lock);
 		uint64_t result = 0;
-		
+
 		if (_full) {
 			result = _capacity;
 		} else if (_readPos <= _writePos) {
 			result = _writePos - _readPos;
 		} else {
-			result = _capacity - _readPos + _writePos; 
+			result = _capacity - _readPos + _writePos;
 		}
-		
+
 		return result;
 	}
 

@@ -63,7 +63,7 @@ extern "C" {
 
 namespace laminaFS {
 Allocator DefaultAllocator = lfs_default_allocator;
-	
+
 ErrorCode WorkItemGetResult(WorkItem *workItem) {
 	return workItem->_resultCode;
 }
@@ -109,7 +109,7 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 	i._deleteDir = &DirectoryDevice::deleteDir;
 
 	registerDeviceInterface(i);
-	
+
 	_processing = false;
 	startProcessingThread();
 }
@@ -124,7 +124,7 @@ FileContext::~FileContext() {
 		m->~MountInfo();
 		_alloc.free(_alloc.allocator, m);
 	}
-	
+
 	for (DeviceInterface *i : _interfaces) {
 		i->~DeviceInterface();
 		_alloc.free(_alloc.allocator, i);
@@ -156,7 +156,7 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 	{
 		result = static_cast<int32_t>(_interfaces.size());
 		DeviceInterface *newInterface = new(_alloc.alloc(_alloc.allocator, sizeof(DeviceInterface), alignof(DeviceInterface))) DeviceInterface(interface);
-		_interfaces.push_back(newInterface);	
+		_interfaces.push_back(newInterface);
 	}
 
 	return result;
@@ -184,7 +184,7 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 		m = nullptr;
 		LOG("unable to mount device %u:%s on %s\n", deviceType, devicePath, mountPoint);
 	}
-	
+
 	resultCode = result;
 	return m;
 }
@@ -192,7 +192,7 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 bool FileContext::releaseMount(Mount mount) {
 	bool result = false;
 	stopProcessingThread();
-	
+
 	auto it = std::find(_mounts.begin(), _mounts.end(), mount);
 	if (it != _mounts.end()) {
 		(*it)->_interface->_destroy((*it)->_device);
@@ -200,7 +200,7 @@ bool FileContext::releaseMount(Mount mount) {
 
 		(*it)->~MountInfo();
 		_alloc.free(_alloc.allocator, *it);
-		
+
 		_mounts.erase(it);
 		result = true;
 	}
@@ -232,7 +232,7 @@ FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const ch
 			}
 		}
 	}
-	
+
 	return nullptr;
 }
 
@@ -279,8 +279,8 @@ void FileContext::normalizePath(char *path) {
 				++readPos;
 				found = true;
 			}
-		
-			// handle parent directory "/.."	
+
+			// handle parent directory "/.."
 			while (path[readPos] == '/' && path[readPos + 1] == '.' && path[readPos + 2] == '.') {
 				readPos += 3;
 				while (writePos > 0 && path[writePos - 1] != '/') {
@@ -293,7 +293,7 @@ void FileContext::normalizePath(char *path) {
 				found = true;
 			}
 
-			// handle "this" directory "/."	
+			// handle "this" directory "/."
 			while (path[readPos] == '/' && path[readPos + 1] == '.' && path[readPos + 2] != '.') {
 				readPos += 2;
 				found = true;
@@ -309,12 +309,12 @@ void FileContext::normalizePath(char *path) {
 		++writePos;
 		++readPos;
 	}
-	
+
 	// remove trailing slash
 	if (writePos > 1 && path[writePos - 1] == '/') {
 		path[writePos - 1] = 0;
 	}
-	
+
 	// fixup root slash
 	if (path[0] == 0 && inputLen >= 1) {
 		path[0] = '/';
@@ -333,18 +333,18 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 
 	if (item) {
 		item->_operation = static_cast<lfs_file_operation_t>(op);
-		
+
 		size_t pathLen = strlen(path) + 1;
 		char *normalizedPath = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * pathLen, alignof(char)));
 		strcpy_s(normalizedPath, pathLen, path);
 		normalizePath(normalizedPath);
 
 		item->_filename = normalizedPath;
-		
+
 		item->_callback = callback;
 		item->_completed = false;
 	}
-	
+
 	return item;
 }
 
@@ -525,8 +525,8 @@ void FileContext::processingFunc(FileContext *ctx) {
 				item->_callback(item);
 			}
 		} else {
-			// wait for condition variable to notify because queue is empty
+			while (ctx->_processing && ctx->_workItemQueue.getCount() == 0)
+				std::this_thread::yield();
 		}
 	}
 }
-

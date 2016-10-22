@@ -25,12 +25,12 @@ class PoolAllocator {
 public:
 	PoolAllocator() {
 	}
-	
+
 	PoolAllocator(lfs_allocator_t &alloc, uint64_t capacity) {
 		_alloc = alloc;
 		_storage = reinterpret_cast<T*>(_alloc.alloc(_alloc.allocator, sizeof(T) * capacity, alignof(T)));
 		_capacity = capacity;
-		
+
 		// create bitmask and initialize all bits to available
 		lldiv_t d = lldiv(capacity, 32);
 		_bitmaskCount = d.quot + (d.rem != 0 ? 1 : 0);
@@ -38,7 +38,7 @@ public:
 		for (uint64_t i = 0 ; i < static_cast<uint64_t>(d.quot); ++i) {
 			_bitmask[i] = 0xFFFFFFFF;
 		}
-		
+
 		if (d.rem != 0) {
 			uint32_t newBitmask = 0;
 			for (uint32_t i = 0; i < d.rem; ++i) {
@@ -47,7 +47,7 @@ public:
 			_bitmask[d.quot] = newBitmask;
 		}
 	}
-	
+
 	~PoolAllocator() {
 		_alloc.free(_alloc.allocator, _storage);
 		_alloc.free(_alloc.allocator, _bitmask);
@@ -76,6 +76,7 @@ public:
 	}
 
 	void free(T *v) {
+		std::lock_guard<std::mutex> lock(_mutex);
 		if (v && v >= _storage && v < _storage + _capacity) {
 			v->~T();
 			uintptr_t index = (reinterpret_cast<uintptr_t>(v) - reinterpret_cast<uintptr_t>(_storage)) / sizeof(T);

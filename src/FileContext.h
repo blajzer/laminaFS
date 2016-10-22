@@ -105,7 +105,7 @@ public:
 
 		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
-		
+
 		typedef ErrorCode (*CreateDirFunc)(void *, const char *);
 		typedef ErrorCode (*DeleteDirFunc)(void *, const char *);
 
@@ -137,7 +137,7 @@ public:
 	//! @return the mount
 	Mount createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &returnCode);
 
-	//! Releases a mount. 
+	//! Releases a mount.
 	//! Finishes all processing work items and suspends processing while it runs.
 	//! @param mount the mount to remove
 	//! @return whether or not the mount was found and removed
@@ -149,7 +149,7 @@ public:
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
 	WorkItem *readFile(const char *filepath, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr);
-	
+
 	//! Writes a buffer to a file.
 	//! @param filepath the path to the file to write
 	//! @param buffer the buffer to write
@@ -165,31 +165,31 @@ public:
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
 	WorkItem *appendFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr);
-	
+
 	//! Determines if a file exists.
 	//! @param filepath the path to the file to delete
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
 	WorkItem *fileExists(const char *filepath, WorkItemCallback callback = nullptr);
-	
+
 	//! Gets the size of a file.
 	//! @param filepath the path to the file to delete
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
 	WorkItem *fileSize(const char *filepath, WorkItemCallback callback = nullptr);
-	
+
 	//! Deletes a file.
 	//! @param filepath the path to the file to delete
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
 	WorkItem *deleteFile(const char *filepath, WorkItemCallback callback = nullptr);
-	
+
 	//! Creates a directory.
 	//! @param path the path to the directory to create
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
 	WorkItem *createDir(const char *path, WorkItemCallback callback = nullptr);
-	
+
 	//! Deletes a directory and all contained files/directories.
 	//! @param path the path to the directory to delete
 	//! @param callback optional callback
@@ -207,7 +207,7 @@ public:
 	//! Gets the log function.
 	//! @return the logging function
 	LogFunc getLogFunc() { return _log; }
-	
+
 	//! Returns the Allocator interface used to initialize this context.
 	//! @return the Allocator
 	Allocator &getAllocator() { return _alloc; }

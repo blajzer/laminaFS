@@ -19,7 +19,7 @@ int test_cpp_api() {
 		FileContext::normalizePath(str1);
 		TEST(0, strcmp(str1, "/path/with/a/lot/of/slashes"), "Normalize \"//path//with/a/////lot/of/slashes///\"");
 		free(str1);
-	
+
 		char *str2 = strdup("//path//with/a/////lot/of/slashes///file.txt");
 		FileContext::normalizePath(str2);
 		TEST(0, strcmp(str2, "/path/with/a/lot/of/slashes/file.txt"), "Normalize \"//path//with/a/////lot/of/slashes///file.txt\"");
@@ -34,12 +34,12 @@ int test_cpp_api() {
 		FileContext::normalizePath(str4);
 		TEST(0, strcmp(str4, "/"), "Normalize \"/..\"");
 		free(str4);
-	
+
 		char *str5 = strdup("/////../..");
 		FileContext::normalizePath(str5);
 		TEST(0, strcmp(str5, "/"), "Normalize \"/////../..\"");
 		free(str5);
-	
+
 		char *str6 = strdup("/////./././../boop/../some_other_dir");
 		FileContext::normalizePath(str6);
 		TEST(0, strcmp(str6, "/some_other_dir"), "Normalize \"/////./././../boop/../some_other_dir\"");
@@ -49,7 +49,7 @@ int test_cpp_api() {
 		FileContext::normalizePath(str7);
 		TEST(0, strcmp(str7, "/"), "Normalize \"/////\"");
 		free(str7);
-	
+
 		char *str8 = strdup("/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/");
 		FileContext::normalizePath(str8);
 		TEST(0, strcmp(str8, "/bringing/it/all/together"), "Normalize \"/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/\"");
@@ -91,16 +91,16 @@ int test_cpp_api() {
 
 		ctx.releaseWorkItem(writeTest);
 	}
-	
+
 	// test file existence
 	{
 		WorkItem *existsTest = ctx.fileExists("/four/four.txt");
 		WaitForWorkItem(existsTest);
 		TEST(LFS_OK, WorkItemGetResult(existsTest), "Check file existence /four/four.txt");
-		
+
 		ctx.releaseWorkItem(existsTest);
 	}
-	
+
 	// test appending
 	{
 		WorkItem *appendTest = ctx.appendFile("/two/test.txt", const_cast<char *>(testString), strlen(testString));
@@ -110,7 +110,7 @@ int test_cpp_api() {
 
 		ctx.releaseWorkItem(appendTest);
 	}
-	
+
 	// test file size
 	{
 		WorkItem *sizeTest = ctx.fileSize("/two/test.txt");
@@ -147,16 +147,16 @@ int test_cpp_api() {
 
 		ctx.releaseWorkItem(dirCreateTest);
 		ctx.releaseWorkItem(dirCreateTest1);
-		ctx.releaseWorkItem(dirCreateTest2);	
+		ctx.releaseWorkItem(dirCreateTest2);
 		ctx.releaseWorkItem(dirCreateTest3);
 	}
-	
+
 	// test directory deletion
 	{
 		// write a file in the test directory first
 		WorkItem *writeTest = ctx.writeFile("/two/testDir/nested/even_more/test.txt", const_cast<char *>(testString), strlen(testString));
 		TEST(LFS_OK, WorkItemGetResult(writeTest), "Write file /two/testDir/nested/even_more/test.txt");
-	
+
 		WorkItem *dirDeleteTest = ctx.deleteDir("/two/testDir");
 		WaitForWorkItem(dirDeleteTest);
 		TEST(LFS_OK, WorkItemGetResult(dirDeleteTest), "Delete dir /two/testDir");
@@ -164,11 +164,11 @@ int test_cpp_api() {
 		ctx.releaseWorkItem(writeTest);
 		ctx.releaseWorkItem(dirDeleteTest);
 	}
-	
+
 	// remove mount
 	TEST(true, ctx.releaseMount(mount2), "Unmount testData/testroot2 -> /four");
 	TEST(false, ctx.releaseMount(mount3), "Unmount testData/nonexistentdir -> /five (expected fail)");
-	
+
 	TEST_RESULTS();
 	TEST_RETURN();
 }

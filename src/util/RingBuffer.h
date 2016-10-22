@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "shared_types.h"
+#include "util/Semaphore.h"
 
 namespace laminaFS {
 namespace util {
@@ -21,11 +22,12 @@ public:
 		_full = true;
 	}
 
-	RingBuffer(lfs_allocator_t &alloc, uint64_t capacity) {
+	RingBuffer(lfs_allocator_t &alloc, uint64_t capacity, Semaphore *sem = nullptr) {
 		_alloc = alloc;
 		_capacity = capacity;
 		_buffer = reinterpret_cast<T*>(_alloc.alloc(_alloc.allocator, sizeof(T) * capacity, alignof(T)));
 		_full = false;
+		_semaphore = sem;
 	}
 
 	~RingBuffer() {
@@ -43,6 +45,7 @@ public:
 
 			std::lock_guard<std::mutex> lock(_lock);
 			if (!_full) {
+				bool notify = _writePos == _readPos;
 				_buffer[_writePos++] = v;
 
 				if (_writePos == _capacity)
@@ -52,6 +55,8 @@ public:
 					_full = true;
 
 				done = true;
+				if (_semaphore && notify)
+					_semaphore->notify();
 			}
 		}
 	}
@@ -101,6 +106,7 @@ private:
 	uint64_t _capacity;
 	uint64_t _readPos = 0;
 	uint64_t _writePos = 0;
+	Semaphore *_semaphore;
 	std::mutex _lock;
 	std::atomic<bool> _full;
 };

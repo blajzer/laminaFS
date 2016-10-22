@@ -11,6 +11,7 @@
 #include "shared_types.h"
 #include "util/PoolAllocator.h"
 #include "util/RingBuffer.h"
+#include "util/Semaphore.h"
 
 namespace laminaFS {
 
@@ -239,7 +240,9 @@ private:
 	std::vector<MountInfo*, AllocatorAdapter<MountInfo*>> _mounts;
 
 	util::PoolAllocator<WorkItem> _workItemPool;
+	util::Semaphore _workItemQueueSemaphore;
 	util::RingBuffer<WorkItem*> _workItemQueue;
+
 	std::thread _processingThread;
 
 	Allocator _alloc;

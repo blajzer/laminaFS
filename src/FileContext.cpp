@@ -94,7 +94,8 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 : _interfaces(AllocatorAdapter<DeviceInterface*>(alloc))
 , _mounts(AllocatorAdapter<MountInfo*>(alloc))
 , _workItemPool(alloc, workItemPoolSize)
-, _workItemQueue(alloc, maxQueuedWorkItems)
+, _workItemQueueSemaphore()
+, _workItemQueue(alloc, maxQueuedWorkItems, &_workItemQueueSemaphore)
 , _alloc(alloc)
 {
 	DeviceInterface i;
@@ -141,6 +142,7 @@ void FileContext::startProcessingThread() {
 void FileContext::stopProcessingThread() {
 	if (_processing) {
 		_processing = false;
+		_workItemQueueSemaphore.notify();
 		_processingThread.join();
 	}
 }
@@ -525,8 +527,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				item->_callback(item);
 			}
 		} else {
-			while (ctx->_processing && ctx->_workItemQueue.getCount() == 0)
-				std::this_thread::yield();
+			ctx->_workItemQueueSemaphore.wait();
 		}
 	}
 }

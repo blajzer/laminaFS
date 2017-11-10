@@ -136,7 +136,7 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath) {
 	}
 }
 
-size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer) {
+size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer, bool nullTerminate) {
 	size_t bytesRead = 0;
 
 	DirectoryDevice *dir = static_cast<DirectoryDevice*>(device);
@@ -149,9 +149,13 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 		}
 
 		if (fileSize && fseek(file, 0L, SEEK_SET) == 0) {
-			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize, 1);
+			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 			if (*buffer) {
 				bytesRead = fread(*buffer, 1, fileSize, file);
+
+				if (nullTerminate) {
+					(*(char**)buffer)[bytesRead] = 0;
+				}
 			}
 		}
 
@@ -199,7 +203,7 @@ ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
 			break;
 		};
 	}
-	
+
 	dev->freeDevicePath(diskPath);
 	return resultCode;
 }
@@ -207,7 +211,7 @@ ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
 ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
 	char *diskPath = dev->getDevicePath(path);
-	
+
 	ErrorCode resultCode = LFS_OK;
 #ifdef _WIN32
 	if (!CreateDirectory(diskPath, nullptr)) {
@@ -264,9 +268,9 @@ ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 	shOp.fAnyOperationsAborted = FALSE;
 	shOp.hNameMappings = nullptr;
 	shOp.lpszProgressTitle = nullptr;
-	
+
 	int result = SHFileOperation(&shOp);
-	
+
 	switch (result) {
 	case 0:
 		break;
@@ -328,7 +332,7 @@ ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 		error = error || errno != 0;
 		fts_close(fts);
 	}
-	
+
 	if (error) {
 		switch (errno) {
 		case EACCES:
@@ -342,11 +346,10 @@ ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 			resultCode = LFS_GENERIC_ERROR;
 			break;
 		};
-		
+
 	}
 #endif
 
 	dev->freeDevicePath(diskPath);
 	return resultCode;
 }
-

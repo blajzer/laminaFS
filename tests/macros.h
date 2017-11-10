@@ -23,5 +23,4 @@ printf("[%s]: %s - (line %d)\n", passed ? PASS_STRING : FAIL_STRING, NAME, __LIN
 }
 
 #define TEST_RESULTS() printf("\n%s: %d/%d tests passed\n", testCount == testsPassed ? "SUCCESS" : "FAILURE", testsPassed, testCount);
-#define TEST_RETURN() return testCount == testsPassed;
-
+#define TEST_RETURN() return testCount == testsPassed ? 0 : 1;

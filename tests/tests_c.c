@@ -26,13 +26,13 @@ int test_c_api() {
 
 	// test reading
 	{
-		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/one/random.txt", NULL);
+		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/one/random.txt", false, NULL);
 		lfs_wait_for_work_item(readTest);
 
 		TEST(LFS_OK, lfs_work_item_get_result(readTest), "Read file /one/random.txt");
-		
+
 		lfs_work_item_free_buffer(readTest);
-		
+
 		lfs_release_work_item(ctx, readTest);
 	}
 
@@ -45,16 +45,16 @@ int test_c_api() {
 
 		lfs_release_work_item(ctx, writeTest);
 	}
-	
+
 	// test file existence
 	{
 		struct lfs_work_item_t *existsTest = lfs_file_exists(ctx, "/four/four.txt", NULL);
 		lfs_wait_for_work_item(existsTest);
 		TEST(LFS_OK, lfs_work_item_get_result(existsTest), "Check file existence /four/four.txt");
-		
+
 		lfs_release_work_item(ctx, existsTest);
 	}
-	
+
 	// test appending
 	{
 		struct lfs_work_item_t *appendTest = lfs_append_file(ctx, "/two/test.txt", (char *)(testString), strlen(testString), NULL);
@@ -64,7 +64,7 @@ int test_c_api() {
 
 		lfs_release_work_item(ctx, appendTest);
 	}
-	
+
 	// test file size
 	{
 		struct lfs_work_item_t *sizeTest = lfs_file_size(ctx, "/two/test.txt", NULL);
@@ -74,7 +74,7 @@ int test_c_api() {
 
 		lfs_release_work_item(ctx, sizeTest);
 	}
-	
+
 	// test deleting
 	{
 		struct lfs_work_item_t *deleteTest = lfs_delete_file(ctx, "/two/test.txt", NULL);
@@ -83,14 +83,14 @@ int test_c_api() {
 
 		lfs_release_work_item(ctx, deleteTest);
 	}
-	
+
 	// test directory creation
 	{
 		struct lfs_work_item_t *dirCreateTest = lfs_create_dir(ctx, "/two/testDir", NULL);
 		struct lfs_work_item_t *dirCreateTest1 = lfs_create_dir(ctx, "/two/testDir/nested", NULL);
 		struct lfs_work_item_t *dirCreateTest2 = lfs_create_dir(ctx, "/two/testDir/nested/even_more", NULL);
 		struct lfs_work_item_t *dirCreateTest3 = lfs_create_dir(ctx, "/two/testDir/nested/even_more/so_deep", NULL);
-		
+
 		// Work items are sequential, only need to wait on the last one
 		lfs_wait_for_work_item(dirCreateTest3);
 
@@ -101,16 +101,16 @@ int test_c_api() {
 
 		lfs_release_work_item(ctx, dirCreateTest);
 		lfs_release_work_item(ctx, dirCreateTest1);
-		lfs_release_work_item(ctx, dirCreateTest2);	
+		lfs_release_work_item(ctx, dirCreateTest2);
 		lfs_release_work_item(ctx, dirCreateTest3);
 	}
-	
+
 	// test directory deletion
 	{
 		// write a file in the test directory first
 		struct lfs_work_item_t *writeTest = lfs_write_file(ctx, "/two/testDir/nested/even_more/test.txt", (char *)(testString), strlen(testString), NULL);
 		TEST(LFS_OK, lfs_work_item_get_result(writeTest), "Write file /two/testDir/nested/even_more/test.txt");
-	
+
 		struct lfs_work_item_t *dirDeleteTest = lfs_delete_dir(ctx, "/two/testDir", NULL);
 		lfs_wait_for_work_item(dirDeleteTest);
 		TEST(LFS_OK, lfs_work_item_get_result(dirDeleteTest), "Delete dir /two/testDir");
@@ -123,7 +123,7 @@ int test_c_api() {
 	TEST(false, lfs_release_mount(ctx, mount3), "Unmount testData/nonexistentdir -> /five (expected fail)");
 
 	lfs_context_destroy(ctx);
-	
+
 	TEST_RESULTS();
 	TEST_RETURN();
 }

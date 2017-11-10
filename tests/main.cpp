@@ -10,15 +10,15 @@ extern int test_cpp_api();
 
 int main(int argc, char *argv[]) {
 	int result = 0;
-	
+
 	printf("Testing C++ API:\n");
 	printf("----------------\n");
 	result += test_cpp_api();
 	printf("\n");
-	
+
 	printf("Testing C API:\n");
 	printf("--------------\n");
 	result += test_c_api();
-	
+
 	return result;
 }

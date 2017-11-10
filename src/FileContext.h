@@ -102,7 +102,7 @@ public:
 
 		typedef bool (*FileExistsFunc)(void *, const char *);
 		typedef size_t (*FileSizeFunc)(void *, const char *);
-		typedef size_t (*ReadFileFunc)(void *, const char *, lfs_allocator_t *, void **);
+		typedef size_t (*ReadFileFunc)(void *, const char *, lfs_allocator_t *, void **, bool);
 
 		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
@@ -146,10 +146,11 @@ public:
 
 	//! Reads the entirety of a file.
 	//! @param filepath the path to the file to read
+	//! @param nullTerminate whether or not to add a NULL to the end of the buffer so it can be directly used as a C-string.
 	//! @param alloc the allocator to use. If NULL will use the context's allocator.
 	//! @param callback optional callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *readFile(const char *filepath, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr);
+	WorkItem *readFile(const char *filepath, bool nullTerminate, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr);
 
 	//! Writes a buffer to a file.
 	//! @param filepath the path to the file to write

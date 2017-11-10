@@ -36,12 +36,12 @@ bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount) {
 	return CTX(ctx)->releaseMount(mount);
 }
 
-lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, lfs_allocator_t *alloc, lfs_work_item_callback_t callback) {
-	return CTX(ctx)->readFile(filepath, alloc, callback);
+lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_allocator_t *alloc, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->readFile(filepath, nullTerminate, alloc, callback);
 }
 
-lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback) {
-	return CTX(ctx)->readFile(filepath, nullptr, callback);
+lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_work_item_callback_t callback) {
+	return CTX(ctx)->readFile(filepath, nullTerminate, nullptr, callback);
 }
 
 lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback) {

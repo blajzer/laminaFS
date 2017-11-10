@@ -38,6 +38,7 @@ struct lfs_work_item_t {
 	uint64_t _bufferBytes = 0;
 
 	lfs_error_code_t _resultCode = LFS_OK;
+	bool _nullTerminate = false;
 	std::atomic<bool> _completed;
 };
 
@@ -296,7 +297,7 @@ void FileContext::normalizePath(char *path) {
 			}
 
 			// handle "this" directory "/."
-			while (path[readPos] == '/' && path[readPos + 1] == '.' && path[readPos + 2] != '.') {
+			while (path[readPos] == '/' && path[readPos + 1] == '.' && (path[readPos + 2] == '/' || path[readPos + 2] == 0)) {
 				readPos += 2;
 				found = true;
 			}
@@ -350,11 +351,12 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 	return item;
 }
 
-WorkItem *FileContext::readFile(const char *filepath, Allocator *alloc, WorkItemCallback callback) {
+WorkItem *FileContext::readFile(const char *filepath, bool nullTerminate, Allocator *alloc, WorkItemCallback callback) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ, callback);
 
 	if (item) {
 		item->_allocator = alloc ? *alloc : _alloc;
+		item->_nullTerminate = nullTerminate;
 
 		_workItemQueue.push(item);
 	}
@@ -467,7 +469,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				const char *devicePath;
 				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, &item->_allocator, &item->_buffer);
+					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, &item->_allocator, &item->_buffer, item->_nullTerminate);
 					item->_resultCode = LFS_OK;
 				} else {
 					item->_resultCode = LFS_NOT_FOUND;

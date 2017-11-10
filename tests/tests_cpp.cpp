@@ -60,6 +60,16 @@ int test_cpp_api() {
 		FileContext::normalizePath(str8);
 		TEST(0, strcmp(str8, "/bringing/it/all/together"), "Normalize \"/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/\"");
 		free(str8);
+
+		char *str9 = strdup("/.thing");
+		FileContext::normalizePath(str9);
+		TEST(0, strcmp(str9, "/.thing"), "Normalize \"/.thing\"");
+		free(str9);
+
+		char *str10 = strdup("/.");
+		FileContext::normalizePath(str10);
+		TEST(0, strcmp(str10, "/"), "Normalize \"/.\"");
+		free(str10);
 	}
 
 	FileContext ctx(laminaFS::DefaultAllocator);
@@ -78,7 +88,7 @@ int test_cpp_api() {
 
 	// test reading
 	{
-		WorkItem *readTest = ctx.readFile("/one/random.txt");
+		WorkItem *readTest = ctx.readFile("/one/random.txt", false);
 		WaitForWorkItem(readTest);
 
 		TEST(LFS_OK, WorkItemGetResult(readTest), "Read file /one/random.txt");

@@ -1,4 +1,5 @@
+* Proper Unicode support for Windows.
+* Unicode tests.
 * Reduce harness duplication in tests.
-* releaseMount
 * Lock-free ring buffer? (https://www.kernel.org/doc/Documentation/trace/ring-buffer-design.txt)
 * Processing thread per device interface?

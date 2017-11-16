@@ -70,6 +70,11 @@ int test_cpp_api() {
 		FileContext::normalizePath(str10);
 		TEST(0, strcmp(str10, "/"), "Normalize \"/.\"");
 		free(str10);
+
+		char *str11 = strdup("///..first/second");
+		FileContext::normalizePath(str11);
+		TEST(0, strcmp(str11, "/..first/second"), "Normalize \"////..first/second\"");
+		free(str11);
 	}
 
 	FileContext ctx(laminaFS::DefaultAllocator);

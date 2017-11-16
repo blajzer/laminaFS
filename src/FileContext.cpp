@@ -277,29 +277,30 @@ void FileContext::normalizePath(char *path) {
 		bool found = false;
 		do {
 			found = false;
-			// handle multiple slashes "//", "///", etc...
-			while (path[readPos] == '/' && path[readPos + 1] == '/') {
-				++readPos;
-				found = true;
-			}
+			
+			if (path[readPos] == '/') {
+				if (path[readPos + 1] == '/') {
+					// handle multiple slashes "//", "///", etc...
+					++readPos;
+					found = true;
+				} else if (path[readPos + 1] == '.') {
+					if (path[readPos + 2] == '.' && (path[readPos + 3] == 0 || path[readPos + 3] == '/')) {
+						// handle parent directory "/.."
+						readPos += 3;
+						while (writePos > 0 && path[writePos - 1] != '/') {
+							--writePos;
+						}
 
-			// handle parent directory "/.."
-			while (path[readPos] == '/' && path[readPos + 1] == '.' && path[readPos + 2] == '.') {
-				readPos += 3;
-				while (writePos > 0 && path[writePos - 1] != '/') {
-					--writePos;
+						if (writePos != 0) {
+							--writePos;
+						}
+						found = true;
+					} else if (path[readPos + 2] == '/' || path[readPos + 2] == 0) {
+						// handle "this" directory "/."
+						readPos += 2;
+						found = true;
+					}
 				}
-
-				if (writePos != 0) {
-					--writePos;
-				}
-				found = true;
-			}
-
-			// handle "this" directory "/."
-			while (path[readPos] == '/' && path[readPos + 1] == '.' && (path[readPos + 2] == '/' || path[readPos + 2] == 0)) {
-				readPos += 2;
-				found = true;
 			}
 		} while (found);
 

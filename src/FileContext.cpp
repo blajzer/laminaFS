@@ -277,7 +277,7 @@ void FileContext::normalizePath(char *path) {
 		bool found = false;
 		do {
 			found = false;
-			
+
 			if (path[readPos] == '/') {
 				if (path[readPos + 1] == '/') {
 					// handle multiple slashes "//", "///", etc...
@@ -458,8 +458,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				const char *devicePath;
 				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_fileSize(mount->_device, devicePath);
-					item->_resultCode = LFS_OK;
+					item->_bufferBytes = mount->_interface->_fileSize(mount->_device, devicePath, &item->_resultCode);
 				} else {
 					item->_resultCode = LFS_NOT_FOUND;
 				}
@@ -470,8 +469,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				const char *devicePath;
 				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, &item->_allocator, &item->_buffer, item->_nullTerminate);
-					item->_resultCode = LFS_OK;
+					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, &item->_allocator, &item->_buffer, item->_nullTerminate, &item->_resultCode);
 				} else {
 					item->_resultCode = LFS_NOT_FOUND;
 				}
@@ -483,8 +481,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				const char *devicePath;
 				MountInfo *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_writeFile(mount->_device, devicePath, item->_buffer, item->_bufferBytes, item->_operation == LFS_OP_APPEND);
-					item->_resultCode = LFS_OK;
+					item->_bufferBytes = mount->_interface->_writeFile(mount->_device, devicePath, item->_buffer, item->_bufferBytes, item->_operation == LFS_OP_APPEND, &item->_resultCode);
 				} else {
 					item->_resultCode = LFS_UNSUPPORTED;
 				}

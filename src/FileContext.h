@@ -101,10 +101,10 @@ public:
 		typedef void (*DestroyFunc)(void*);
 
 		typedef bool (*FileExistsFunc)(void *, const char *);
-		typedef size_t (*FileSizeFunc)(void *, const char *);
-		typedef size_t (*ReadFileFunc)(void *, const char *, lfs_allocator_t *, void **, bool);
+		typedef size_t (*FileSizeFunc)(void *, const char *, ErrorCode *);
+		typedef size_t (*ReadFileFunc)(void *, const char *, lfs_allocator_t *, void **, bool, ErrorCode *);
 
-		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool);
+		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool, ErrorCode *);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
 
 		typedef ErrorCode (*CreateDirFunc)(void *, const char *);

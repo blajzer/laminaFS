@@ -19,10 +19,10 @@ public:
 	static void destroy(void *device);
 
 	static bool fileExists(void *device, const char *filePath);
-	static size_t fileSize(void *device, const char *filePath);
-	static size_t readFile(void *device, const char *filePath, lfs_allocator_t *, void **buffer, bool nullTerminate);
+	static size_t fileSize(void *device, const char *filePath, ErrorCode *outError);
+	static size_t readFile(void *device, const char *filePath, lfs_allocator_t *, void **buffer, bool nullTerminate, ErrorCode *outError);
 
-	static size_t writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append);
+	static size_t writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append, ErrorCode *outError);
 	static ErrorCode deleteFile(void *device, const char *filePath);
 
 

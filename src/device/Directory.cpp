@@ -120,23 +120,39 @@ bool DirectoryDevice::fileExists(void *device, const char *filePath) {
 	return result == 0 && S_ISREG(statInfo.st_mode);
 }
 
-size_t DirectoryDevice::fileSize(void *device, const char *filePath) {
+size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *outError) {
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
 	char *diskPath = dev->getDevicePath(filePath);
 
+	size_t size = 0;
 	StatType statInfo;
 	int result = PlatformStat(diskPath, &statInfo);
-
 	dev->freeDevicePath(diskPath);
 
 	if (result == 0 && S_ISREG(statInfo.st_mode)) {
-		return statInfo.st_size;
+		*outError = LFS_OK;
+		size = statInfo.st_size;
+	} else if (result != 0) {
+		switch (errno) {
+		case EPERM:
+		case EACCES:
+			*outError = LFS_PERMISSIONS_ERROR;
+			break;
+		case ENOENT:
+			*outError = LFS_NOT_FOUND;
+			break;
+		default:
+			*outError = LFS_GENERIC_ERROR;
+			break;
+		};
 	} else {
-		return 0;
+	   *outError = LFS_UNSUPPORTED;
 	}
+
+	return size;
 }
 
-size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer, bool nullTerminate) {
+size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer, bool nullTerminate, ErrorCode *outError) {
 	size_t bytesRead = 0;
 
 	DirectoryDevice *dir = static_cast<DirectoryDevice*>(device);
@@ -159,12 +175,17 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 			}
 		}
 
+		*outError = ferror(file) ? LFS_GENERIC_ERROR : LFS_OK;
+
 		fclose(file);
+	} else {
+		*outError = LFS_NOT_FOUND;
 	}
+
 	return bytesRead;
 }
 
-size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append) {
+size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append, ErrorCode *outError) {
 	size_t bytesWritten = 0;
 
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
@@ -172,7 +193,10 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 
 	if (file) {
 		bytesWritten = fwrite(buffer, 1, bytesToWrite, file);
+		*outError = ferror(file) ? LFS_GENERIC_ERROR : LFS_OK;
 		fclose(file);
+	} else {
+		*outError = LFS_PERMISSIONS_ERROR;
 	}
 
 	return bytesWritten;

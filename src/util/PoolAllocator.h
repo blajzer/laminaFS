@@ -55,34 +55,42 @@ public:
 
 	T *alloc() {
 		T *result = nullptr;
-
-		std::lock_guard<std::mutex> lock(_mutex);
-		for (uint64_t i = 0; i < _bitmaskCount; ++i) {
-			if (_bitmask[i] != 0) {
+		{
+			std::lock_guard<std::mutex> lock(_mutex);
+			for (uint64_t i = 0; i < _bitmaskCount; ++i) {
+				if (_bitmask[i] != 0) {
 #ifdef _WIN32
-				unsigned long bit;
-				_BitScanForward(&bit, _bitmask[i]);
+					unsigned long bit;
+					_BitScanForward(&bit, _bitmask[i]);
 #else
-				uint64_t bit = static_cast<uint64_t>(ffs(_bitmask[i]) - 1);
+					uint64_t bit = static_cast<uint64_t>(ffs(_bitmask[i]) - 1);
 #endif
-				uint64_t index = i * 32 + bit;
-				result = new(&_storage[index]) T();
-				_bitmask[i] = _bitmask[i] & ~(1 << bit);
-				break;
+					uint64_t index = i * 32 + bit;
+					result = &_storage[index];
+					_bitmask[i] = _bitmask[i] & ~(1 << bit);
+					break;
+				}
 			}
+		}
+
+		if (result) {
+			result = new(result) T();
 		}
 
 		return result;
 	}
 
 	void free(T *v) {
-		std::lock_guard<std::mutex> lock(_mutex);
-		if (v && v >= _storage && v < _storage + _capacity) {
-			v->~T();
-			uintptr_t index = (reinterpret_cast<uintptr_t>(v) - reinterpret_cast<uintptr_t>(_storage)) / sizeof(T);
-			lldiv_t d = lldiv(index, 32);
-			_bitmask[d.quot] |= 1 << d.rem;
+		if (!v || v < _storage || v >= _storage + _capacity) {
+			return;
 		}
+
+		v->~T();
+
+		std::lock_guard<std::mutex> lock(_mutex);
+		uintptr_t index = (reinterpret_cast<uintptr_t>(v) - reinterpret_cast<uintptr_t>(_storage)) / sizeof(T);
+		lldiv_t d = lldiv(index, 32);
+		_bitmask[d.quot] |= 1 << d.rem;
 	}
 
 private:

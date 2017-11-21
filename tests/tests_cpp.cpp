@@ -176,6 +176,7 @@ int test_cpp_api() {
 	{
 		// write a file in the test directory first
 		WorkItem *writeTest = ctx.writeFile("/two/testDir/nested/even_more/test.txt", const_cast<char *>(testString), strlen(testString));
+		WaitForWorkItem(writeTest);
 		TEST(LFS_OK, WorkItemGetResult(writeTest), "Write file /two/testDir/nested/even_more/test.txt");
 
 		WorkItem *dirDeleteTest = ctx.deleteDir("/two/testDir");

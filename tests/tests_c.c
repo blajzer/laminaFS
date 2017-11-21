@@ -109,6 +109,7 @@ int test_c_api() {
 	{
 		// write a file in the test directory first
 		struct lfs_work_item_t *writeTest = lfs_write_file(ctx, "/two/testDir/nested/even_more/test.txt", (char *)(testString), strlen(testString), NULL, NULL);
+		lfs_wait_for_work_item(writeTest);
 		TEST(LFS_OK, lfs_work_item_get_result(writeTest), "Write file /two/testDir/nested/even_more/test.txt");
 
 		struct lfs_work_item_t *dirDeleteTest = lfs_delete_dir(ctx, "/two/testDir", NULL, NULL);

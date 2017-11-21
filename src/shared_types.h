@@ -7,8 +7,13 @@
 // opaque types
 struct lfs_work_item_t;
 
+enum lfs_callback_result_t {
+	LFS_DO_NOTHING,
+	LFS_FREE_WORK_ITEM
+};
+
 // typedefs
-typedef void (*lfs_work_item_callback_t)(struct lfs_work_item_t *, void *);
+typedef enum lfs_callback_result_t (*lfs_work_item_callback_t)(const struct lfs_work_item_t *, void *);
 
 //! Memory allocation function. Params are userdata pointer, size in bytes, and alignment in bytes.
 typedef void *(*lfs_mem_alloc_t)(void *, size_t, size_t);

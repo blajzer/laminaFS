@@ -528,9 +528,15 @@ void FileContext::processingFunc(FileContext *ctx) {
 			}
 			};
 
-			item->_completed = true;
+			lfs_callback_result_t callbackResult = LFS_DO_NOTHING;
 			if (item->_callback) {
-				item->_callback(item, item->_callbackUserData);
+				callbackResult = item->_callback(item, item->_callbackUserData);
+			}
+
+			if (callbackResult == LFS_FREE_WORK_ITEM) {
+				ctx->releaseWorkItem(item);
+			} else {
+				item->_completed = true;
 			}
 		} else {
 			ctx->_workItemQueueSemaphore.wait();

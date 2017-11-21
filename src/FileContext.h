@@ -20,6 +20,7 @@ typedef lfs_error_code_t ErrorCode;
 typedef lfs_work_item_t WorkItem;
 typedef lfs_allocator_t Allocator;
 typedef lfs_work_item_callback_t WorkItemCallback;
+typedef lfs_callback_result_t CallbackResult;
 typedef void* Mount;
 
 extern Allocator DefaultAllocator;

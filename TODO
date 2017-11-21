@@ -1,7 +1,9 @@
+* Better documentation
 * Proper Unicode support for Windows.
 * Unicode tests.
 * WITH_CHECKS version for asserting that work item is complete before accessing.
-* Enforce memory order?
+* _completed -- use .load() and .store to not use a seq_cst
+* Callback test
 * Reduce harness duplication in tests.
 * Lock-free ring buffer? (https://www.kernel.org/doc/Documentation/trace/ring-buffer-design.txt)
 * Processing thread per device interface?

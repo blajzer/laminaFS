@@ -20,7 +20,7 @@ liblaminaFSInfo platform = (getCompiler platform) {
   srcDir = "src",
   commonCompileFlags = "-g -Wall -Werror -fPIC -O2",
   cCompileFlags = "--std=c11",
-  cxxCompileFlags = "--std=c++11",
+  cxxCompileFlags = "--std=c++14",
   linkFlags = "-shared -lpthread",
   outputLocation = ObjAndBinDirs ("obj/" `T.append` platform) ".",
   includeDirs = ["src"]
@@ -35,7 +35,7 @@ testsInfo platform = (getCompiler platform) {
   srcDir = "tests",
   commonCompileFlags = "-g -O2",
   cCompileFlags = "--std=c11",
-  cxxCompileFlags = "--std=c++11",
+  cxxCompileFlags = "--std=c++14",
   linkFlags = "-L. -llaminaFS -lstdc++ -lpthread",
   extraLinkDeps = ["liblaminaFS.so"],
   outputLocation = ObjAndBinDirs ("obj/" `T.append` platform) ".",

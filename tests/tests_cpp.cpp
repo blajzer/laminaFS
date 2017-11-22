@@ -12,69 +12,58 @@ using namespace laminaFS;
 #define strdup _strdup
 #endif
 
+#ifndef _countof
+#define _countof(X) (sizeof(X) / sizeof(*(X)))
+#endif
+
 namespace {
 const char *testString = "this is the C++ test string.";
+
+const char *normalizationTestStrings[] = {
+	"//path//with/a/////lot/of/slashes///",
+	"//path//with/a/////lot/of/slashes///file.txt",
+	"///path//with/a/////../lot/of/../../slashes///file.txt",
+	"/..",
+	"/////../..",
+	"/////./././../boop/../some_other_dir",
+	"/////",
+	"/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/",
+	"/.thing",
+	"/.",
+	"///..first/second"
+};
+
+const char *normalizationTestResults[] = {
+	"/path/with/a/lot/of/slashes",
+	"/path/with/a/lot/of/slashes/file.txt",
+	"/path/with/slashes/file.txt",
+	"/",
+	"/",
+	"/some_other_dir",
+	"/",
+	"/bringing/it/all/together",
+	"/.thing",
+	"/",
+	"/..first/second"
+};
+
 }
 
 int test_cpp_api() {
 	TEST_INIT();
 
 	// test normalization
+	for (uint32_t i = 0; i < _countof(normalizationTestStrings); ++i)
 	{
-		char *str1 = strdup("//path//with/a/////lot/of/slashes///");
-		FileContext::normalizePath(str1);
-		TEST(0, strcmp(str1, "/path/with/a/lot/of/slashes"), "Normalize \"//path//with/a/////lot/of/slashes///\"");
-		free(str1);
+		char *testStr = strdup(normalizationTestStrings[i]);
+		FileContext::normalizePath(testStr);
 
-		char *str2 = strdup("//path//with/a/////lot/of/slashes///file.txt");
-		FileContext::normalizePath(str2);
-		TEST(0, strcmp(str2, "/path/with/a/lot/of/slashes/file.txt"), "Normalize \"//path//with/a/////lot/of/slashes///file.txt\"");
-		free(str2);
+		++testCount;
+		bool passed = strcmp(testStr, normalizationTestResults[i]) == 0;
+		testsPassed += passed ? 1 : 0;
+		printf("[%s]: Normalize: %s\n", passed ? PASS_STRING : FAIL_STRING, normalizationTestStrings[i]);
 
-		char *str3 = strdup("///path//with/a/////../lot/of/../../slashes///file.txt");
-		FileContext::normalizePath(str3);
-		TEST(0, strcmp(str3, "/path/with/slashes/file.txt"), "Normalize \"///path//with/a/////../lot/of/../../slashes///file.txt\"");
-		free(str3);
-
-		char *str4 = strdup("/..");
-		FileContext::normalizePath(str4);
-		TEST(0, strcmp(str4, "/"), "Normalize \"/..\"");
-		free(str4);
-
-		char *str5 = strdup("/////../..");
-		FileContext::normalizePath(str5);
-		TEST(0, strcmp(str5, "/"), "Normalize \"/////../..\"");
-		free(str5);
-
-		char *str6 = strdup("/////./././../boop/../some_other_dir");
-		FileContext::normalizePath(str6);
-		TEST(0, strcmp(str6, "/some_other_dir"), "Normalize \"/////./././../boop/../some_other_dir\"");
-		free(str6);
-
-		char *str7 = strdup("/////");
-		FileContext::normalizePath(str7);
-		TEST(0, strcmp(str7, "/"), "Normalize \"/////\"");
-		free(str7);
-
-		char *str8 = strdup("/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/");
-		FileContext::normalizePath(str8);
-		TEST(0, strcmp(str8, "/bringing/it/all/together"), "Normalize \"/./../../../././///./bringing/everything/..//it///.///././././all/./to/./pieces/..//.///../together/\"");
-		free(str8);
-
-		char *str9 = strdup("/.thing");
-		FileContext::normalizePath(str9);
-		TEST(0, strcmp(str9, "/.thing"), "Normalize \"/.thing\"");
-		free(str9);
-
-		char *str10 = strdup("/.");
-		FileContext::normalizePath(str10);
-		TEST(0, strcmp(str10, "/"), "Normalize \"/.\"");
-		free(str10);
-
-		char *str11 = strdup("///..first/second");
-		FileContext::normalizePath(str11);
-		TEST(0, strcmp(str11, "/..first/second"), "Normalize \"////..first/second\"");
-		free(str11);
+		free(testStr);
 	}
 
 	FileContext ctx(laminaFS::DefaultAllocator);

@@ -70,28 +70,33 @@ extern "C" {
 namespace laminaFS {
 Allocator DefaultAllocator = lfs_default_allocator;
 
-ErrorCode WorkItemGetResult(WorkItem *workItem) {
+ErrorCode WorkItemGetResult(const WorkItem *workItem) {
 	return workItem->_resultCode;
 }
 
-void *WorkItemGetBuffer(WorkItem *workItem) {
+void *WorkItemGetBuffer(const WorkItem *workItem) {
+	std::atomic_thread_fence(std::memory_order_acquire);
 	return workItem->_buffer;
 }
 
 void WorkItemFreeBuffer(WorkItem *workItem) {
-	workItem->_allocator.free(workItem->_allocator.allocator, workItem->_buffer);
+	if (workItem->_buffer) {
+		workItem->_allocator.free(workItem->_allocator.allocator, workItem->_buffer);
+		workItem->_buffer = nullptr;
+		std::atomic_thread_fence(std::memory_order_release);
+	}
 }
 
-uint64_t WorkItemGetBytes(WorkItem *workItem) {
+uint64_t WorkItemGetBytes(const WorkItem *workItem) {
 	return workItem->_bufferBytes;
 }
 
-bool WorkItemCompleted(WorkItem *workItem) {
-	return workItem->_completed;
+bool WorkItemCompleted(const WorkItem *workItem) {
+	return workItem->_completed.load(std::memory_order_acquire);
 }
 
-void WaitForWorkItem(WorkItem *workItem) {
-	while (!workItem->_completed)
+void WaitForWorkItem(const WorkItem *workItem) {
+	while (!workItem->_completed.load(std::memory_order_acquire))
 		std::this_thread::yield();
 }
 }
@@ -352,7 +357,7 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 
 		item->_callback = callback;
 		item->_callbackUserData = callbackUserData;
-		item->_completed = false;
+		item->_completed.store(false, std::memory_order_release);
 	}
 
 	return item;
@@ -535,8 +540,11 @@ void FileContext::processingFunc(FileContext *ctx) {
 
 			if (callbackResult == LFS_FREE_WORK_ITEM) {
 				ctx->releaseWorkItem(item);
+			} else if (callbackResult == LFS_FREE_WORK_ITEM_AND_BUFFER) {
+				WorkItemFreeBuffer(item);
+				ctx->releaseWorkItem(item);
 			} else {
-				item->_completed = true;
+				item->_completed.store(true, std::memory_order_release);
 			}
 		} else {
 			ctx->_workItemQueueSemaphore.wait();

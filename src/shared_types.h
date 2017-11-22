@@ -9,7 +9,8 @@ struct lfs_work_item_t;
 
 enum lfs_callback_result_t {
 	LFS_DO_NOTHING,
-	LFS_FREE_WORK_ITEM
+	LFS_FREE_WORK_ITEM,
+	LFS_FREE_WORK_ITEM_AND_BUFFER
 };
 
 // typedefs

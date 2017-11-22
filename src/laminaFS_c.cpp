@@ -72,15 +72,15 @@ lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path, lfs_work_it
 	return CTX(ctx)->deleteDir(path, callback, callbackUserData);
 }
 
-lfs_error_code_t lfs_work_item_get_result(lfs_work_item_t *workItem) {
+lfs_error_code_t lfs_work_item_get_result(const lfs_work_item_t *workItem) {
 	return WorkItemGetResult(workItem);
 }
 
-void *lfs_work_item_get_buffer(lfs_work_item_t *workItem) {
+void *lfs_work_item_get_buffer(const lfs_work_item_t *workItem) {
 	return WorkItemGetBuffer(workItem);
 }
 
-uint64_t lfs_work_item_get_bytes(lfs_work_item_t *workItem) {
+uint64_t lfs_work_item_get_bytes(const lfs_work_item_t *workItem) {
 	return WorkItemGetBytes(workItem);
 }
 
@@ -88,11 +88,11 @@ void lfs_work_item_free_buffer(lfs_work_item_t *workItem) {
 	WorkItemFreeBuffer(workItem);
 }
 
-bool lfs_work_item_completed(lfs_work_item_t *workItem) {
+bool lfs_work_item_completed(const lfs_work_item_t *workItem) {
 	return WorkItemCompleted(workItem);
 }
 
-void lfs_wait_for_work_item(lfs_work_item_t *workItem) {
+void lfs_wait_for_work_item(const lfs_work_item_t *workItem) {
 	WaitForWorkItem(workItem);
 }
 

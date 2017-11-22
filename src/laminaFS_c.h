@@ -169,17 +169,17 @@ LFS_C_API struct lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem
 //! @return the result code
-LFS_C_API enum lfs_error_code_t lfs_work_item_get_result(struct lfs_work_item_t *workItem);
+LFS_C_API enum lfs_error_code_t lfs_work_item_get_result(const struct lfs_work_item_t *workItem);
 
 //! Gets the output buffer from a WorkItem.
 //! @param workItem the WorkItem
 //! @return the output buffer
-LFS_C_API void *lfs_work_item_get_buffer(struct lfs_work_item_t *workItem);
+LFS_C_API void *lfs_work_item_get_buffer(const struct lfs_work_item_t *workItem);
 
 //! Gets the bytes read/written from a WorkItem.
 //! @param workItem the WorkItem
 //! @return the bytes read/written
-LFS_C_API uint64_t lfs_work_item_get_bytes(struct lfs_work_item_t *workItem);
+LFS_C_API uint64_t lfs_work_item_get_bytes(const struct lfs_work_item_t *workItem);
 
 //! Frees the output buffer that was allocated by the work item.
 //! @param workItem the WorkItem
@@ -187,11 +187,11 @@ LFS_C_API void lfs_work_item_free_buffer(struct lfs_work_item_t *workItem);
 
 //! Waits for a WorkItem to finish processing.
 //! @param workItem the WorkItem to wait for
-LFS_C_API void lfs_wait_for_work_item(struct lfs_work_item_t *workItem);
+LFS_C_API void lfs_wait_for_work_item(const struct lfs_work_item_t *workItem);
 
 //! Whether or not a work item has completed processing.
 //! @param workItem the WorkItem to query
-LFS_C_API bool lfs_work_item_completed(struct lfs_work_item_t *workItem);
+LFS_C_API bool lfs_work_item_completed(const struct lfs_work_item_t *workItem);
 
 //! Releases a WorkItem.
 //! @param ctx the context

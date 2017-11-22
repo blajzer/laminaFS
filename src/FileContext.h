@@ -61,17 +61,17 @@ bool operator!=(const AllocatorAdapter<T> &a, const AllocatorAdapter<U> &b) {
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem
 //! @return the result code
-extern ErrorCode WorkItemGetResult(WorkItem *workItem);
+extern ErrorCode WorkItemGetResult(const WorkItem *workItem);
 
 //! Gets the output buffer from a WorkItem.
 //! @param workItem the WorkItem
 //! @return the output buffer
-extern void *WorkItemGetBuffer(WorkItem *workItem);
+extern void *WorkItemGetBuffer(const WorkItem *workItem);
 
 //! Gets the bytes read/written from a WorkItem.
 //! @param workItem the WorkItem
 //! @return the bytes read/written
-extern uint64_t WorkItemGetBytes(WorkItem *workItem);
+extern uint64_t WorkItemGetBytes(const WorkItem *workItem);
 
 //! Frees the output buffer that was allocated by the work item.
 //! @param workItem the WorkItem
@@ -79,15 +79,24 @@ extern void WorkItemFreeBuffer(WorkItem *workItem);
 
 //! Whether or not a work item has completed processing.
 //! @param workItem the WorkItem to query
-extern bool WorkItemCompleted(WorkItem *workItem);
+extern bool WorkItemCompleted(const WorkItem *workItem);
 
 //! Waits for a WorkItem to finish processing.
 //! @param workItem the WorkItem to wait for
-extern void WaitForWorkItem(WorkItem *workItem);
+extern void WaitForWorkItem(const WorkItem *workItem);
 
 
 //! FileContext is the "main" object in LaminaFS. It handles management of files,
-//! mounts, and the backend processing that occurs.
+//! mounts, and the backend processing that occurs. There is an internal thread
+//! that does the processing for the work items.
+//!
+//! There are two methods of work item ownership:
+//! 1. No callback is provided. In this case the client thread is responsible for calling FileContext::releaseWorkItem().
+//! 2. Callback is provided. The callback can request that the procesing thread free the work item, or have client code
+//!    free it sometime *after* the callback completes.
+//!
+//! In either case, the work item must be complete before FileContext::releaseWorkItem() can be called.
+//! Use WaitForWorkItem() to ensure completion.
 class FileContext {
 public:
 	FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems = 128, uint64_t workItemPoolSize = 1024);

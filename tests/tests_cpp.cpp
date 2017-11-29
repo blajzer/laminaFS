@@ -176,6 +176,20 @@ int test_cpp_api() {
 		ctx.releaseWorkItem(dirDeleteTest);
 	}
 
+	// test Unicode support
+	{
+		WorkItem *unicodeTest = ctx.writeFile("/two/koala🐨.txt", const_cast<char *>(testString), strlen(testString));
+		WaitForWorkItem(unicodeTest);
+		TEST(LFS_OK, WorkItemGetResult(unicodeTest), "Write file /two/koala🐨.txt");
+
+		WorkItem *deleteTest = ctx.deleteFile("/two/koala🐨.txt");
+		WaitForWorkItem(deleteTest);
+		TEST(LFS_OK, WorkItemGetResult(deleteTest), "Delete file /two/koala🐨.txt");
+
+		ctx.releaseWorkItem(unicodeTest);
+		ctx.releaseWorkItem(deleteTest);
+	}
+
 	// remove mount
 	TEST(true, ctx.releaseMount(mount2), "Unmount testData/testroot2 -> /four");
 	TEST(false, ctx.releaseMount(mount3), "Unmount testData/nonexistentdir -> /five (expected fail)");

@@ -13,17 +13,10 @@
 #include <sys/stat.h>
 
 #ifdef _WIN32
+#define UNICODE 1
+#define _UNICODE 1
 #include <windows.h>
 #include <shellapi.h>
-
-#ifndef S_ISDIR
-#define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
-#endif
-
-#ifndef S_ISREG
-#define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
-#endif
-
 #else
 #include <fts.h>
 #include <unistd.h>
@@ -33,11 +26,11 @@ using namespace laminaFS;
 
 namespace {
 #ifdef _WIN32
-typedef struct _stat StatType;
-#define PlatformStat _stat
-#else
-typedef struct stat StatType;
-#define PlatformStat stat
+constexpr uint32_t MAX_PATH_LEN = 1024;
+
+int widen(const char *inStr, WCHAR *outStr, size_t outStrLen) {
+	return MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, inStr, -1, outStr, outStrLen);
+}
 #endif
 }
 
@@ -55,10 +48,21 @@ DirectoryDevice::~DirectoryDevice() {
 }
 
 ErrorCode DirectoryDevice::create(Allocator *alloc, const char *path, void **device) {
-	StatType statInfo;
-	int result = PlatformStat(path, &statInfo);
-
 	ErrorCode returnCode = LFS_OK;
+#ifdef _WIN32
+	WCHAR windowsPath[MAX_PATH_LEN];
+	widen(path, &windowsPath[0], MAX_PATH_LEN);
+
+	DWORD result = GetFileAttributesW(&windowsPath[0]);
+
+	if (result != INVALID_FILE_ATTRIBUTES && (result & FILE_ATTRIBUTE_DIRECTORY)) {
+		*device = new(alloc->alloc(alloc->allocator, sizeof(DirectoryDevice), alignof(DirectoryDevice))) DirectoryDevice(alloc, path);
+	} else {
+		returnCode = LFS_NOT_FOUND;
+	}
+#else
+	struct stat statInfo;
+	int result = stat(path, &statInfo);
 
 	if (result == 0 && S_ISDIR(statInfo.st_mode)) {
 		*device = new(alloc->alloc(alloc->allocator, sizeof(DirectoryDevice), alignof(DirectoryDevice))) DirectoryDevice(alloc, path);
@@ -66,6 +70,7 @@ ErrorCode DirectoryDevice::create(Allocator *alloc, const char *path, void **dev
 		*device = nullptr;
 		returnCode = LFS_NOT_FOUND;
 	}
+#endif
 
 	return returnCode;
 }
@@ -76,6 +81,25 @@ void DirectoryDevice::destroy(void *device) {
 	dir->_alloc->free(dir->_alloc->allocator, device);
 }
 
+#ifdef _WIN32
+void *DirectoryDevice::openFile(const char *filePath, uint32_t accessMode, uint32_t createMode) {
+	char *diskPath = getDevicePath(filePath);
+	WCHAR windowsPath[MAX_PATH_LEN];
+	widen(diskPath, &windowsPath[0], MAX_PATH_LEN);
+	freeDevicePath(diskPath);
+
+	HANDLE file = CreateFileW(
+		&windowsPath[0],
+		accessMode,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		nullptr,
+		createMode,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr);
+
+	return file;
+}
+#else
 FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 	char *diskPath = getDevicePath(filePath);
 	FILE *file = nullptr;
@@ -83,16 +107,13 @@ FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 	freeDevicePath(diskPath);
 	return file;
 }
+#endif
 
-char *DirectoryDevice::getDevicePath(const char *filePath, bool extraNull) {
-	uint32_t diskPathLen = static_cast<uint32_t>(_pathLen + strlen(filePath) + (extraNull ? 2 : 1));
+char *DirectoryDevice::getDevicePath(const char *filePath) {
+	uint32_t diskPathLen = static_cast<uint32_t>(_pathLen + strlen(filePath) + 1);
 	char *diskPath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * diskPathLen, alignof(char)));
 	strcpy_s(diskPath, diskPathLen, _devicePath);
 	strcpy_s(diskPath + _pathLen, diskPathLen - _pathLen, filePath);
-
-	if (extraNull) {
-		diskPath[diskPathLen - 1] = 0;
-	}
 
 	// replace forward slashes with backslashes on windows
 #ifdef _WIN32
@@ -113,20 +134,55 @@ bool DirectoryDevice::fileExists(void *device, const char *filePath) {
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
 	char *diskPath = dev->getDevicePath(filePath);
 
-	StatType statInfo;
-	int result = PlatformStat(diskPath, &statInfo);
+#ifdef _WIN32
+	WCHAR windowsPath[MAX_PATH_LEN];
+	widen(diskPath, &windowsPath[0], MAX_PATH_LEN);
+	dev->freeDevicePath(diskPath);
+
+	DWORD result = GetFileAttributesW(&windowsPath[0]);
+
+	return result != INVALID_FILE_ATTRIBUTES && !(result & FILE_ATTRIBUTE_DIRECTORY);
+#else
+	struct stat statInfo;
+	int result = stat(diskPath, &statInfo);
 
 	dev->freeDevicePath(diskPath);
 	return result == 0 && S_ISREG(statInfo.st_mode);
+#endif
 }
-
+#include <assert.h>
 size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *outError) {
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
-	char *diskPath = dev->getDevicePath(filePath);
-
 	size_t size = 0;
-	StatType statInfo;
-	int result = PlatformStat(diskPath, &statInfo);
+
+#ifdef _WIN32
+	HANDLE file = dev->openFile(filePath, GENERIC_READ, OPEN_EXISTING);
+
+	if (file) {
+		LARGE_INTEGER result;
+		if(!GetFileSizeEx(file, &result)) {
+			printf("error code %lu\n", GetLastError());
+		} else {
+			size = result.QuadPart;
+		}
+		CloseHandle(file);
+	} else {
+		switch (GetLastError()) {
+		case ERROR_FILE_NOT_FOUND:
+			*outError = LFS_NOT_FOUND;
+			break;
+		case ERROR_ACCESS_DENIED:
+			*outError = LFS_PERMISSIONS_ERROR;
+			break;
+		default:
+			*outError = LFS_GENERIC_ERROR;
+			break;
+		};
+	}
+#else
+	char *diskPath = dev->getDevicePath(filePath);
+	struct stat statInfo;
+	int result = stat(diskPath, &statInfo);
 	dev->freeDevicePath(diskPath);
 
 	if (result == 0 && S_ISREG(statInfo.st_mode)) {
@@ -148,14 +204,46 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *
 	} else {
 	   *outError = LFS_UNSUPPORTED;
 	}
-
+#endif
 	return size;
 }
 
 size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer, bool nullTerminate, ErrorCode *outError) {
 	size_t bytesRead = 0;
-
 	DirectoryDevice *dir = static_cast<DirectoryDevice*>(device);
+#ifdef _WIN32
+	HANDLE file = dir->openFile(filePath, GENERIC_READ, OPEN_EXISTING);
+
+	if (file) {
+		LARGE_INTEGER result;
+		GetFileSizeEx(file, &result);
+		size_t fileSize = result.QuadPart;
+
+		if (fileSize) {
+			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
+
+			DWORD bytesReadTemp = 0;
+			if (!ReadFile(file, *buffer, fileSize, &bytesReadTemp, nullptr)) {
+				switch (GetLastError()) {
+				case ERROR_ACCESS_DENIED:
+					*outError = LFS_PERMISSIONS_ERROR;
+					break;
+				default:
+					*outError = LFS_GENERIC_ERROR;
+					break;
+				};
+			} else if (nullTerminate) {
+				(*(char**)buffer)[bytesRead] = 0;
+			}
+
+			bytesRead = bytesReadTemp;
+		}
+
+		CloseHandle(file);
+	} else {
+		*outError = LFS_NOT_FOUND;
+	}
+#else
 	FILE *file = dir->openFile(filePath, "rb");
 
 	if (file) {
@@ -181,14 +269,45 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 	} else {
 		*outError = LFS_NOT_FOUND;
 	}
-
+#endif
 	return bytesRead;
 }
 
 size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append, ErrorCode *outError) {
 	size_t bytesWritten = 0;
-
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
+
+#ifdef _WIN32
+	HANDLE file = dev->openFile(filePath, GENERIC_WRITE, append ? OPEN_ALWAYS : CREATE_ALWAYS);
+
+	if (file) {
+		if (append) {
+			if (SetFilePointer(file, 0, nullptr, FILE_END) == INVALID_SET_FILE_POINTER) {
+				*outError = LFS_GENERIC_ERROR;
+				CloseHandle(file);
+				return bytesWritten;
+			}
+		}
+
+		DWORD temp = 0;
+		if (!WriteFile(file, buffer, bytesToWrite, &temp, nullptr)) {
+				*outError = LFS_GENERIC_ERROR;
+		} else {
+			bytesWritten = temp;
+		}
+	} else {
+		switch (GetLastError()) {
+		case ERROR_ACCESS_DENIED:
+			*outError = LFS_PERMISSIONS_ERROR;
+			break;
+		default:
+			*outError = LFS_GENERIC_ERROR;
+			break;
+		};
+	}
+
+	CloseHandle(file);
+#else
 	FILE *file = dev->openFile(filePath, append ? "ab" : "wb");
 
 	if (file) {
@@ -198,7 +317,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 	} else {
 		*outError = LFS_PERMISSIONS_ERROR;
 	}
-
+#endif
 	return bytesWritten;
 }
 
@@ -208,12 +327,24 @@ ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
 
 	ErrorCode resultCode = LFS_OK;
 #ifdef _WIN32
-	int result = _unlink(diskPath);
-#else
-	int result = unlink(diskPath);
-#endif
+	WCHAR windowsPath[MAX_PATH_LEN];
+	widen(diskPath, &windowsPath[0], MAX_PATH_LEN);
 
-	if (result != 0) {
+	if (!DeleteFileW(&windowsPath[0])) {
+		switch (GetLastError()) {
+		case ERROR_FILE_NOT_FOUND:
+			resultCode = LFS_NOT_FOUND;
+			break;
+		case ERROR_ACCESS_DENIED:
+			resultCode = LFS_PERMISSIONS_ERROR;
+			break;
+		default:
+			resultCode = LFS_GENERIC_ERROR;
+			break;
+		};
+	}
+#else
+	if (unlink(diskPath) != 0) {
 		switch (errno) {
 		case EPERM:
 		case EACCES:
@@ -222,11 +353,15 @@ ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
 		case EROFS:
 			resultCode = LFS_UNSUPPORTED;
 			break;
+		case ENOENT:
+			resultCode = LFS_NOT_FOUND;
+			break;
 		default:
 			resultCode = LFS_GENERIC_ERROR;
 			break;
 		};
 	}
+#endif
 
 	dev->freeDevicePath(diskPath);
 	return resultCode;
@@ -238,7 +373,10 @@ ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 
 	ErrorCode resultCode = LFS_OK;
 #ifdef _WIN32
-	if (!CreateDirectory(diskPath, nullptr)) {
+	WCHAR windowsPath[MAX_PATH_LEN];
+	widen(diskPath, &windowsPath[0], MAX_PATH_LEN);
+
+	if (!CreateDirectoryW(&windowsPath[0], nullptr)) {
 		switch (GetLastError()) {
 		case ERROR_ALREADY_EXISTS:
 			resultCode = LFS_ALREADY_EXISTS;
@@ -275,25 +413,29 @@ ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 
 ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
-	char *diskPath = dev->getDevicePath(path, true);
+	char *diskPath = dev->getDevicePath(path);
 
 	ErrorCode resultCode = LFS_OK;
 
 #ifdef _WIN32
+	WCHAR windowsPath[MAX_PATH_LEN];
+	int len = widen(diskPath, &windowsPath[0], MAX_PATH_LEN - 1); // XXX: ensure one space for double-null
+	windowsPath[len + 1] = 0;
+
 	// just use the shell API to delete the directory.
 	// requires path to be double null-terminated.
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb762164(v=vs.85).aspx
 	SHFILEOPSTRUCT shOp;
 	shOp.hwnd = nullptr;
 	shOp.wFunc = FO_DELETE;
-	shOp.pFrom = diskPath;
+	shOp.pFrom = &windowsPath[0];
 	shOp.pTo = nullptr;
 	shOp.fFlags = FOF_NO_UI;
 	shOp.fAnyOperationsAborted = FALSE;
 	shOp.hNameMappings = nullptr;
 	shOp.lpszProgressTitle = nullptr;
 
-	int result = SHFileOperation(&shOp);
+	int result = SHFileOperationW(&shOp);
 
 	switch (result) {
 	case 0:

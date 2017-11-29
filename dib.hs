@@ -9,9 +9,9 @@ exeExt platform = if platform == "mingw32" then ".exe" else ""
 soExt platform = if platform == "mingw32" then ".dll" else ".so"
 
 mingw32Config = defaultGXXConfig {
-  compiler = "i686-w64-mingw32-gcc",
-  linker = "i686-w64-mingw32-g++ ",
-  archiver = "i686-w64-mingw32-ar"
+  compiler = "x86_64-w64-mingw32-gcc",
+  linker = "x86_64-w64-mingw32-g++ ",
+  archiver = "i86_64-w64-mingw32-ar"
 }
 
 liblaminaFSInfo platform = (getCompiler platform) {

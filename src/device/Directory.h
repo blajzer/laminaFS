@@ -25,13 +25,16 @@ public:
 	static size_t writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append, ErrorCode *outError);
 	static ErrorCode deleteFile(void *device, const char *filePath);
 
-
 	static ErrorCode createDir(void *device, const char *path);
 	static ErrorCode deleteDir(void *device, const char *path);
 
 private:
+#ifdef _WIN32
+	void *openFile(const char *filePath, uint32_t accessMode, uint32_t createMode);
+#else
 	FILE *openFile(const char *filePath, const char *modeString);
-	char *getDevicePath(const char *filePath, bool extraNull = false);
+#endif
+	char *getDevicePath(const char *filePath);
 	void freeDevicePath(char *path);
 
 	Allocator *_alloc;

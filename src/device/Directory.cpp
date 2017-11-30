@@ -29,7 +29,7 @@ namespace {
 constexpr uint32_t MAX_PATH_LEN = 1024;
 
 int widen(const char *inStr, WCHAR *outStr, size_t outStrLen) {
-	return MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, inStr, -1, outStr, outStrLen);
+	return MultiByteToWideChar(CP_UTF8, 0, inStr, -1, outStr, (int)outStrLen);
 }
 #endif
 }
@@ -223,7 +223,7 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 
 			DWORD bytesReadTemp = 0;
-			if (!ReadFile(file, *buffer, fileSize, &bytesReadTemp, nullptr)) {
+			if (!ReadFile(file, *buffer, (DWORD)fileSize, &bytesReadTemp, nullptr)) {
 				switch (GetLastError()) {
 				case ERROR_ACCESS_DENIED:
 					*outError = LFS_PERMISSIONS_ERROR;
@@ -290,7 +290,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 		}
 
 		DWORD temp = 0;
-		if (!WriteFile(file, buffer, bytesToWrite, &temp, nullptr)) {
+		if (!WriteFile(file, buffer, (DWORD)bytesToWrite, &temp, nullptr)) {
 				*outError = LFS_GENERIC_ERROR;
 		} else {
 			bytesWritten = temp;
@@ -420,12 +420,12 @@ ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 #ifdef _WIN32
 	WCHAR windowsPath[MAX_PATH_LEN];
 	int len = widen(diskPath, &windowsPath[0], MAX_PATH_LEN - 1); // XXX: ensure one space for double-null
-	windowsPath[len + 1] = 0;
+	windowsPath[len] = 0;
 
 	// just use the shell API to delete the directory.
 	// requires path to be double null-terminated.
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb762164(v=vs.85).aspx
-	SHFILEOPSTRUCT shOp;
+	SHFILEOPSTRUCTW shOp;
 	shOp.hwnd = nullptr;
 	shOp.wFunc = FO_DELETE;
 	shOp.pFrom = &windowsPath[0];

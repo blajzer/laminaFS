@@ -30,6 +30,45 @@ constexpr uint32_t MAX_PATH_LEN = 1024;
 int widen(const char *inStr, WCHAR *outStr, size_t outStrLen) {
 	return MultiByteToWideChar(CP_UTF8, 0, inStr, -1, outStr, (int)outStrLen);
 }
+
+ErrorCode convertError(DWORD error) {
+	ErrorCode result = LFS_GENERIC_ERROR;
+
+	switch (error) {
+	case ERROR_FILE_NOT_FOUND:
+	case ERROR_PATH_NOT_FOUND:
+		result = LFS_NOT_FOUND;
+		break;
+	case ERROR_ACCESS_DENIED:
+		result = LFS_PERMISSIONS_ERROR;
+		break;
+	};
+
+	return result;
+}
+
+#else
+ErrorCode convertError(int error) {
+	ErrorCode result = LFS_GENERIC_ERROR;
+
+	switch (error) {
+	case EEXIST:
+		result = LFS_ALREADY_EXISTS;
+		break;
+	case EPERM:
+	case EACCES:
+		result = LFS_PERMISSIONS_ERROR;
+		break;
+	case EROFS:
+		result = LFS_UNSUPPORTED;
+		break;
+	case ENOENT:
+		result = LFS_NOT_FOUND;
+		break;
+	}
+
+	return result;
+}
 #endif
 }
 
@@ -165,17 +204,7 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *
 		}
 		CloseHandle(file);
 	} else {
-		switch (GetLastError()) {
-		case ERROR_FILE_NOT_FOUND:
-			*outError = LFS_NOT_FOUND;
-			break;
-		case ERROR_ACCESS_DENIED:
-			*outError = LFS_PERMISSIONS_ERROR;
-			break;
-		default:
-			*outError = LFS_GENERIC_ERROR;
-			break;
-		};
+		*outError = convertError(GetLastError());
 	}
 #else
 	char *diskPath = dev->getDevicePath(filePath);
@@ -187,18 +216,7 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *
 		*outError = LFS_OK;
 		size = statInfo.st_size;
 	} else if (result != 0) {
-		switch (errno) {
-		case EPERM:
-		case EACCES:
-			*outError = LFS_PERMISSIONS_ERROR;
-			break;
-		case ENOENT:
-			*outError = LFS_NOT_FOUND;
-			break;
-		default:
-			*outError = LFS_GENERIC_ERROR;
-			break;
-		};
+		*outError = convertError(errno);
 	} else {
 	   *outError = LFS_UNSUPPORTED;
 	}
@@ -222,14 +240,7 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 
 			DWORD bytesReadTemp = 0;
 			if (!ReadFile(file, *buffer, (DWORD)fileSize, &bytesReadTemp, nullptr)) {
-				switch (GetLastError()) {
-				case ERROR_ACCESS_DENIED:
-					*outError = LFS_PERMISSIONS_ERROR;
-					break;
-				default:
-					*outError = LFS_GENERIC_ERROR;
-					break;
-				};
+				*outError = convertError(GetLastError());
 			} else if (nullTerminate) {
 				(*(char**)buffer)[bytesRead] = 0;
 			}
@@ -294,14 +305,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 			bytesWritten = temp;
 		}
 	} else {
-		switch (GetLastError()) {
-		case ERROR_ACCESS_DENIED:
-			*outError = LFS_PERMISSIONS_ERROR;
-			break;
-		default:
-			*outError = LFS_GENERIC_ERROR;
-			break;
-		};
+		*outError = convertError(GetLastError());
 	}
 
 	CloseHandle(file);
@@ -329,35 +333,11 @@ ErrorCode DirectoryDevice::deleteFile(void *device, const char *filePath) {
 	widen(diskPath, &windowsPath[0], MAX_PATH_LEN);
 
 	if (!DeleteFileW(&windowsPath[0])) {
-		switch (GetLastError()) {
-		case ERROR_FILE_NOT_FOUND:
-			resultCode = LFS_NOT_FOUND;
-			break;
-		case ERROR_ACCESS_DENIED:
-			resultCode = LFS_PERMISSIONS_ERROR;
-			break;
-		default:
-			resultCode = LFS_GENERIC_ERROR;
-			break;
-		};
+		resultCode = convertError(GetLastError());
 	}
 #else
 	if (unlink(diskPath) != 0) {
-		switch (errno) {
-		case EPERM:
-		case EACCES:
-			resultCode = LFS_PERMISSIONS_ERROR;
-			break;
-		case EROFS:
-			resultCode = LFS_UNSUPPORTED;
-			break;
-		case ENOENT:
-			resultCode = LFS_NOT_FOUND;
-			break;
-		default:
-			resultCode = LFS_GENERIC_ERROR;
-			break;
-		};
+		resultCode = convertError(errno);
 	}
 #endif
 
@@ -375,33 +355,13 @@ ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 	widen(diskPath, &windowsPath[0], MAX_PATH_LEN);
 
 	if (!CreateDirectoryW(&windowsPath[0], nullptr)) {
-		switch (GetLastError()) {
-		case ERROR_ALREADY_EXISTS:
-			resultCode = LFS_ALREADY_EXISTS;
-			break;
-		case ERROR_PATH_NOT_FOUND:
-			resultCode = LFS_NOT_FOUND;
-			break;
-		}
+		resultCode = convertError(GetLastError());
 	}
 #else
 	int result = mkdir(diskPath, DEFFILEMODE | S_IXUSR | S_IXGRP | S_IRWXO);
 
 	if (result != 0) {
-		switch (errno) {
-		case EEXIST:
-			resultCode = LFS_ALREADY_EXISTS;
-			break;
-		case EACCES:
-			resultCode = LFS_PERMISSIONS_ERROR;
-			break;
-		case EROFS:
-			resultCode = LFS_UNSUPPORTED;
-			break;
-		default:
-			resultCode = LFS_GENERIC_ERROR;
-			break;
-		};
+		resultCode = convertError(errno);
 	}
 #endif
 
@@ -498,19 +458,7 @@ ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 	}
 
 	if (error) {
-		switch (errno) {
-		case EACCES:
-		case EROFS:
-			resultCode = LFS_PERMISSIONS_ERROR;
-			break;
-		case ENOENT:
-			resultCode = LFS_NOT_FOUND;
-			break;
-		default:
-			resultCode = LFS_GENERIC_ERROR;
-			break;
-		};
-
+		resultCode = convertError(errno);
 	}
 #endif
 

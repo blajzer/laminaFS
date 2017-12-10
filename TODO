@@ -1,5 +1,4 @@
 * Better documentation
-* Factor out errno/GetLastError() handling in Directory.cpp
 * WITH_CHECKS version for asserting that work item is complete before accessing.
 * Callback test
 * Always allocate on read, even if file is empty to ensure buffer can be used without checking for null?

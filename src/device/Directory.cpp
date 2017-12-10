@@ -148,7 +148,7 @@ bool DirectoryDevice::fileExists(void *device, const char *filePath) {
 	return result == 0 && S_ISREG(statInfo.st_mode);
 #endif
 }
-#include <assert.h>
+
 size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *outError) {
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
 	size_t size = 0;

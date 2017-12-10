@@ -3,8 +3,6 @@
 
 #include "Directory.h"
 
-#include "platform.h"
-
 #include <cstdio>
 #include <cstring>
 
@@ -15,6 +13,7 @@
 #ifdef _WIN32
 #define UNICODE 1
 #define _UNICODE 1
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <windows.h>
 #include <shellapi.h>
 #else
@@ -40,7 +39,7 @@ DirectoryDevice::DirectoryDevice(Allocator *allocator, const char *path) {
 	// TODO: realpath()
 	_pathLen = static_cast<uint32_t>(strlen(path));
 	_devicePath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * (_pathLen + 1), alignof(char)));
-	strcpy_s(_devicePath, _pathLen + 1, path);
+	strcpy(_devicePath, path);
 }
 
 DirectoryDevice::~DirectoryDevice() {
@@ -102,8 +101,7 @@ void *DirectoryDevice::openFile(const char *filePath, uint32_t accessMode, uint3
 #else
 FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 	char *diskPath = getDevicePath(filePath);
-	FILE *file = nullptr;
-	fopen_s(&file, diskPath, modeString);
+	FILE *file = fopen(diskPath, modeString);
 	freeDevicePath(diskPath);
 	return file;
 }
@@ -112,8 +110,8 @@ FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
 char *DirectoryDevice::getDevicePath(const char *filePath) {
 	uint32_t diskPathLen = static_cast<uint32_t>(_pathLen + strlen(filePath) + 1);
 	char *diskPath = reinterpret_cast<char*>(_alloc->alloc(_alloc->allocator, sizeof(char) * diskPathLen, alignof(char)));
-	strcpy_s(diskPath, diskPathLen, _devicePath);
-	strcpy_s(diskPath + _pathLen, diskPathLen - _pathLen, filePath);
+	strcpy(diskPath, _devicePath);
+	strcpy(diskPath + _pathLen, filePath);
 
 	// replace forward slashes with backslashes on windows
 #ifdef _WIN32

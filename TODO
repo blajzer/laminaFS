@@ -1,6 +1,4 @@
 * Better documentation
-* Unicode tests.
-* Remove platform.h/cpp
 * Factor out errno/GetLastError() handling in Directory.cpp
 * WITH_CHECKS version for asserting that work item is complete before accessing.
 * Callback test

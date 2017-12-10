@@ -5,8 +5,6 @@
 
 #include "device/Directory.h"
 
-#include "platform.h"
-
 #include <algorithm>
 #include <atomic>
 #include <string.h>
@@ -14,6 +12,8 @@
 
 #ifdef __linux__
 #include <malloc.h>
+#elif defined(_WIN32)
+#define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
 using namespace laminaFS;
@@ -187,7 +187,7 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 		size_t mountLen = strlen(mountPoint);
 		m->_prefix = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * (mountLen + 1), alignof(char)));
 		m->_prefixLen = static_cast<uint32_t>(mountLen);
-		strcpy_s(m->_prefix, mountLen + 1, mountPoint);
+		strcpy(m->_prefix, mountPoint);
 
 		_mounts.push_back(m);
 		LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
@@ -350,7 +350,7 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 
 		size_t pathLen = strlen(path) + 1;
 		char *normalizedPath = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * pathLen, alignof(char)));
-		strcpy_s(normalizedPath, pathLen, path);
+		strcpy(normalizedPath, path);
 		normalizePath(normalizedPath);
 
 		item->_filename = normalizedPath;

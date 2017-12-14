@@ -1,6 +1,10 @@
 // LaminaFS is Copyright (c) 2016 Brett Lajzer
 // See LICENSE for license information.
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "FileContext.h"
 
 #include "device/Directory.h"
@@ -12,8 +16,6 @@
 
 #ifdef __linux__
 #include <malloc.h>
-#elif defined(_WIN32)
-#define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
 using namespace laminaFS;

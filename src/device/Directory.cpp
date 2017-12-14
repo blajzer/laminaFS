@@ -1,6 +1,10 @@
 // LaminaFS is Copyright (c) 2016 Brett Lajzer
 // See LICENSE for license information.
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Directory.h"
 
 #include <cstdio>
@@ -13,7 +17,6 @@
 #ifdef _WIN32
 #define UNICODE 1
 #define _UNICODE 1
-#define _CRT_SECURE_NO_WARNINGS 1
 #include <windows.h>
 #include <shellapi.h>
 #else

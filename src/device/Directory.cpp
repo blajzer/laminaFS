@@ -236,7 +236,7 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 		size_t fileSize = result.QuadPart;
 
 		if (fileSize) {
-			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
+			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 
 			DWORD bytesReadTemp = 0;
 			if (!ReadFile(file, *buffer, (DWORD)fileSize, &bytesReadTemp, nullptr)) {
@@ -262,7 +262,7 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 		}
 
 		if (fileSize && fseek(file, 0L, SEEK_SET) == 0) {
-			*buffer = dir->_alloc->alloc(dir->_alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
+			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 			if (*buffer) {
 				bytesRead = fread(*buffer, 1, fileSize, file);
 

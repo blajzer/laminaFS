@@ -29,3 +29,45 @@ LaminaFS can be used through one of two include files:
 #include <laminaFS.h> // C++ interface
 #include <laminaFS_c.h> // C interface
 
+The basic setup procedure is to create a context (either a FileContext, or lfs_context_t)
+and mount at least one device. The Directory device is at index 0 by default.
+[source,cxx]
+----
+FileContext ctx(laminaFS::DefaultAllocator);
+
+// resultCode will return LFS_OK on success
+ErrorCode resultCode;
+Mount mount = ctx.createMount(0, "/", "path/to/my/mount/on/disk", resultCode);
+
+// The returned mount handle can be used to remove the mount later
+ctx.releaseMount(mount);
+----
+
+Once a context and mount have been established successfully, file operations can be
+performed. All file operations will return a work item pointer (WorkItem or lfs_work_item_t).
+These are opaque handles to work items and there are static functions for getting information
+out of them. Before use, a work item must be checked for completion and waited on until it is finished.
+It is an error to attempt to read any information out of the work item before the
+completion status has been checked.
+
+If a work item allocates memory, the associated buffer must be freed by the user
+by calling WorkItemFreeBuffer(). This function is null-safe, so it can be called regardless of
+the result of the operation.
+
+Ultimately, a work item must be returned to the context through releaseWorkItem().
+
+[source,cxx]
+----
+WorkItem *work = ctx.readFile("/some/file.txt", false);
+WaitForWorkItem(work);
+
+if (WorkItemGetResult(work) == LFS_OK) {
+	uint64_t bytesRead = WorkItemGetBytes(work);
+	void *buffer = WorkItemGetBuffer(work);
+
+	// ... do something with the buffer here ...
+}
+
+WorkItemFreeBuffer(work);
+ctx.releaseWorkItem(work);
+----

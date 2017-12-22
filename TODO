@@ -1,7 +1,6 @@
 * Better documentation
 * WITH_CHECKS version for asserting that work item is complete before accessing.
 * Callback test and documentation/example
-* Have releaseWorkItem() call WorkItemFreeBuffer() automatically?
 * Always allocate on read, even if file is empty to ensure buffer can be used without checking for null?
 * Debug/sanitizer flags in dib script.
 * Lock-free ring buffer? (https://www.kernel.org/doc/Documentation/trace/ring-buffer-design.txt)

@@ -32,7 +32,7 @@ private:
 #ifdef _WIN32
 	void *openFile(const char *filePath, uint32_t accessMode, uint32_t createMode);
 #else
-	FILE *openFile(const char *filePath, const char *modeString);
+	int openFile(const char *filePath, int modeFlags);
 #endif
 	char *getDevicePath(const char *filePath);
 	void freeDevicePath(char *path);

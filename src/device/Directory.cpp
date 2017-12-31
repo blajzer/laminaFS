@@ -10,17 +10,17 @@
 #include <cstdio>
 #include <cstring>
 
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #ifdef _WIN32
 #define UNICODE 1
 #define _UNICODE 1
 #include <windows.h>
 #include <shellapi.h>
 #else
+#include <errno.h>
 #include <fts.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #endif
 
@@ -141,9 +141,9 @@ void *DirectoryDevice::openFile(const char *filePath, uint32_t accessMode, uint3
 	return file;
 }
 #else
-FILE *DirectoryDevice::openFile(const char *filePath, const char *modeString) {
+int DirectoryDevice::openFile(const char *filePath, int openFlags) {
 	char *diskPath = getDevicePath(filePath);
-	FILE *file = fopen(diskPath, modeString);
+	int file = open(diskPath, openFlags, 0644);
 	freeDevicePath(diskPath);
 	return file;
 }
@@ -256,30 +256,43 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 		*outError = LFS_NOT_FOUND;
 	}
 #else
-	FILE *file = dir->openFile(filePath, "rb");
+	int file = dir->openFile(filePath, O_RDONLY);
 
-	if (file) {
-		size_t fileSize = 0;
-		if (fseek(file, 0L, SEEK_END) == 0) {
-			fileSize = ftell(file);
+	if (file != -1) {
+		uint64_t fileSize = (uint64_t)lseek(file, (off_t)0, SEEK_END);
+		if (fileSize == (uint64_t)-1) {
+			*outError = convertError(errno);
+			close(file);
+			return 0;
 		}
 
-		if (fileSize && fseek(file, 0L, SEEK_SET) == 0) {
+		if (fileSize && lseek(file, (off_t)0, SEEK_SET) == 0) {
 			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 			if (*buffer) {
-				bytesRead = fread(*buffer, 1, fileSize, file);
+				ssize_t bytes = read(file, *buffer, fileSize);
+
+				if (bytes == -1) {
+					alloc->free(alloc->allocator, *buffer);
+					*buffer = nullptr;
+
+					*outError = convertError(errno);
+					close(file);
+					return 0;
+				}
+
+				bytesRead = (uint64_t)bytes;
 
 				if (nullTerminate) {
 					(*(char**)buffer)[bytesRead] = 0;
 				}
 			}
+		} else {
+			*outError = convertError(errno);
 		}
 
-		*outError = ferror(file) ? LFS_GENERIC_ERROR : LFS_OK;
-
-		fclose(file);
+		close(file);
 	} else {
-		*outError = LFS_NOT_FOUND;
+		*outError = convertError(errno);
 	}
 #endif
 	return bytesRead;
@@ -313,14 +326,20 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 
 	CloseHandle(file);
 #else
-	FILE *file = dev->openFile(filePath, append ? "ab" : "wb");
+	int file = dev->openFile(filePath, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC));
 
-	if (file) {
-		bytesWritten = fwrite(buffer, 1, bytesToWrite, file);
-		*outError = ferror(file) ? LFS_GENERIC_ERROR : LFS_OK;
-		fclose(file);
+	if (file != -1) {
+		ssize_t bytes = write(file, buffer, bytesToWrite);
+
+		if (bytes == -1) {
+			*outError = convertError(errno);
+		} else {
+			bytesWritten = (uint64_t)bytes;
+		}
+
+		close(file);
 	} else {
-		*outError = LFS_PERMISSIONS_ERROR;
+		*outError = convertError(errno);
 	}
 #endif
 	return bytesWritten;

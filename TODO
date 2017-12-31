@@ -1,4 +1,5 @@
 * Better documentation
+* EINTR support on POSIX?
 * WITH_CHECKS version for asserting that work item is complete before accessing.
 * Callback test and documentation/example
 * Always allocate on read, even if file is empty to ensure buffer can be used without checking for null?

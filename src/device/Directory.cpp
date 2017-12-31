@@ -45,6 +45,9 @@ ErrorCode convertError(DWORD error) {
 	case ERROR_ACCESS_DENIED:
 		result = LFS_PERMISSIONS_ERROR;
 		break;
+	case ERROR_DISK_FULL:
+		result = LFS_OUT_OF_SPACE;
+		break;
 	};
 
 	return result;
@@ -67,6 +70,9 @@ ErrorCode convertError(int error) {
 		break;
 	case ENOENT:
 		result = LFS_NOT_FOUND;
+		break;
+	case ENOSPC:
+		result = LFS_OUT_OF_SPACE;
 		break;
 	}
 

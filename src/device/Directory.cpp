@@ -149,7 +149,13 @@ void *DirectoryDevice::openFile(const char *filePath, uint32_t accessMode, uint3
 #else
 int DirectoryDevice::openFile(const char *filePath, int openFlags) {
 	char *diskPath = getDevicePath(filePath);
-	int file = open(diskPath, openFlags, 0644);
+
+	// XXX: open() can fail with EINTR, which means we're just going to retry until it works
+	int file = -1;
+	do {
+		file = open(diskPath, openFlags, 0644);
+	} while (file == -1 && errno == EINTR);
+
 	freeDevicePath(diskPath);
 	return file;
 }
@@ -275,7 +281,11 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 		if (fileSize && lseek(file, (off_t)0, SEEK_SET) == 0) {
 			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 			if (*buffer) {
-				ssize_t bytes = read(file, *buffer, fileSize);
+				// XXX: attempt read and retry if necessary
+				ssize_t bytes = -1;
+				do {
+					bytes = read(file, *buffer, fileSize);
+				} while (bytes == -1 && errno == EINTR);
 
 				if (bytes == -1) {
 					alloc->free(alloc->allocator, *buffer);
@@ -335,7 +345,11 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 	int file = dev->openFile(filePath, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC));
 
 	if (file != -1) {
-		ssize_t bytes = write(file, buffer, bytesToWrite);
+		// XXX: attempt write and retry if necessary
+		ssize_t bytes = -1;
+		do {
+			bytes = write(file, buffer, bytesToWrite);
+		} while(bytes == -1 && errno == EINTR);
 
 		if (bytes == -1) {
 			*outError = convertError(errno);
@@ -386,9 +400,7 @@ ErrorCode DirectoryDevice::createDir(void *device, const char *path) {
 		resultCode = convertError(GetLastError());
 	}
 #else
-	int result = mkdir(diskPath, DEFFILEMODE | S_IXUSR | S_IXGRP | S_IRWXO);
-
-	if (result != 0) {
+	if (mkdir(diskPath, DEFFILEMODE | S_IXUSR | S_IXGRP | S_IRWXO) != 0) {
 		resultCode = convertError(errno);
 	}
 #endif

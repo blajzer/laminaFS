@@ -71,7 +71,7 @@ int test_cpp_api() {
 	// test creating mounts
 	ErrorCode resultCode;
 
-	Mount mount1 = ctx.createMount(0, "/", "testData/testroot", resultCode);
+	ctx.createMount(0, "/", "testData/testroot", resultCode);
 	TEST(LFS_OK, resultCode, "Mount testData/testroot -> /");
 
 	Mount mount2 = ctx.createMount(0, "/four", "testData/testroot2", resultCode);

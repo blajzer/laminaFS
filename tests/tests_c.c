@@ -15,7 +15,7 @@ int test_c_api() {
 
 	// test creating mounts
 	enum lfs_error_code_t resultCode;
-	lfs_mount_t mount1 = lfs_create_mount(ctx, 0, "/", "testData/testroot", &resultCode);
+	lfs_create_mount(ctx, 0, "/", "testData/testroot", &resultCode);
 	TEST(LFS_OK, resultCode, "Mount testData/testroot -> /");
 
 	lfs_mount_t mount2 = lfs_create_mount(ctx, 0, "/four", "testData/testroot2", &resultCode);

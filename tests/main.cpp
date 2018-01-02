@@ -8,7 +8,7 @@
 extern "C" int test_c_api();
 extern int test_cpp_api();
 
-int main(int argc, char *argv[]) {
+int main(int, char *[]) {
 	int result = 0;
 
 	printf("Testing C++ API:\n");

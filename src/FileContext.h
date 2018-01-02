@@ -41,7 +41,7 @@ struct AllocatorAdapter {
 		return static_cast<T*>(_alloc.alloc(_alloc.allocator, sizeof(T) * n, alignof(T)));
 	}
 
-	void deallocate(T* p, std::size_t n) {
+	void deallocate(T* p, std::size_t) {
 		_alloc.free(_alloc.allocator, p);
 	}
 

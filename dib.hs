@@ -3,7 +3,9 @@ module Main where
 import Dib
 import Dib.Builders.C
 import Dib.Target
+import Data.Maybe
 import Data.Monoid
+import qualified Data.List as L
 import qualified Data.Text as T
 
 data Configuration = Configuration {
@@ -30,7 +32,7 @@ liblaminaFSInfo config = (getCompiler $ platform config) {
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++14",
   linkFlags = "-shared -lpthread" <> sanitizerFlags config,
-  outputLocation = ObjAndBinDirs ("obj/" <> platform config) ("lib/" <> platform config <> "-" <> buildType config),
+  outputLocation = ObjAndBinDirs ("obj/" <> platform config <> "-" <> buildType config) ("lib/" <> platform config <> "-" <> buildType config),
   includeDirs = ["src"]
 }
 
@@ -47,7 +49,7 @@ testsInfo config = (getCompiler $ platform config) {
   cxxCompileFlags = "--std=c++14",
   linkFlags = "-L./lib/" <> platform config <> "-" <> buildType config <> " -llaminaFS -lstdc++ -lpthread" <> sanitizerFlags config,
   extraLinkDeps = ["liblaminaFS.so"],
-  outputLocation = ObjAndBinDirs ("obj/" <> platform config) ("bin/" <> platform config <> "-" <> buildType config),
+  outputLocation = ObjAndBinDirs ("obj/" <> platform config <> "-" <> buildType config) ("bin/" <> platform config <> "-" <> buildType config),
   includeDirs = ["src", "tests"]
 }
 
@@ -59,21 +61,29 @@ allTarget config = makePhonyTarget "all" [liblaminaFS config, tests config]
 targets config = [allTarget config,  liblaminaFS config, cleanLamina config, tests config, cleanTests config]
 
 -- Configuration related functions
-getBuildPlatform = makeArgDictLookupFunc "PLATFORM" "local"
-getSanitizer = makeArgDictLookupFunc "SANITIZER" ""
-getBuildType = makeArgDictLookupFunc "BUILD" "release"
+getBuildPlatform d = handleArgResult $ makeArgDictLookupFuncChecked "PLATFORM" "local" ["local", "mingw32"] d
+getSanitizer d = handleArgResult $ makeArgDictLookupFuncChecked "SANITIZER" "" (map fst sanitizerMap) d
+getBuildType d = handleArgResult $ makeArgDictLookupFuncChecked "BUILD" "release" (map fst buildTypeMap) d
 getCompiler platform = if platform == "mingw32" then mingw32Config else defaultGXXConfig
 
-sanitizerToFlags "undefined" = " -fsanitize=undefined"
-sanitizerToFlags "address" = " -fsanitize=address"
-sanitizerToFlags "thread" = " -fsanitize=thread"
-sanitizerToFlags "" = ""
-sanitizerToFlags s@_ = error $ "Unknown sanitizer: \"" ++ s ++ "\" expected one of [undefined, address, thread]"
+findInMap m s = snd.fromJust $ L.find (\(k, v) -> k == s) m
 
-buildTypeToFlags "debug" = "-g "
-buildTypeToFlags "release" = "-g -O2 "
-buildTypeToFlags "release-min" = "-O2 "
-buildTypeToFlags s@_ = error $ "Unknown build type: \"" ++ s ++ "\" expected one of [debug, release, release-min]"
+sanitizerMap = [
+  ("undefined", " -fsanitize=undefined"),
+  ("address", " -fsanitize=address"),
+  ("thread", " -fsanitize=thread"),
+  ("", "")]
+sanitizerToFlags = findInMap sanitizerMap
+
+buildTypeMap = [
+  ("debug", "-g "),
+  ("release", "-g -O2 "),
+  ("release-min", "-O2 ")]
+
+buildTypeToFlags = findInMap buildTypeMap
+
+handleArgResult (Left e) = error e
+handleArgResult (Right v) = v
 
 main = do
   argDict <- getArgDict

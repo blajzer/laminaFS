@@ -3,16 +3,17 @@ module Main where
 import Dib
 import Dib.Builders.C
 import Dib.Target
+import Data.Monoid
 import qualified Data.Text as T
 
-exeExt platform = if platform == "mingw32" then ".exe" else ""
-soExt platform = if platform == "mingw32" then ".dll" else ".so"
-
-sanitizerFlags "undefined" = " -fsanitize=undefined"
-sanitizerFlags "address" = " -fsanitize=address"
-sanitizerFlags "thread" = " -fsanitize=thread"
-sanitizerFlags "" = ""
-sanitizerFlags s@_ = error $ "Unknown sanitizer: " ++ s
+data Configuration = Configuration {
+  platform :: T.Text,
+  buildType :: T.Text,
+  exeExt :: T.Text,
+  soExt :: T.Text,
+  sanitizerFlags :: T.Text,
+  buildFlags :: T.Text
+}
 
 mingw32Config = defaultGXXConfig {
   compiler = "x86_64-w64-mingw32-gcc",
@@ -20,47 +21,70 @@ mingw32Config = defaultGXXConfig {
   archiver = "i86_64-w64-mingw32-ar"
 }
 
-liblaminaFSInfo platform sanitizer = (getCompiler platform) {
-  outputName = "liblaminaFS" `T.append` (soExt platform),
-  targetName = "laminaFS-" `T.append` platform,
+-- liblaminaFS targets
+liblaminaFSInfo config = (getCompiler $ platform config) {
+  outputName = "liblaminaFS" <> soExt config,
+  targetName = "laminaFS-" <> platform config <> "-" <> buildType config,
   srcDir = "src",
-  commonCompileFlags = "-g -Wall -Werror -fPIC -O2" `T.append` (sanitizerFlags sanitizer),
+  commonCompileFlags = "-Wall -Werror -fPIC " <> buildFlags config <> sanitizerFlags config,
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++14",
-  linkFlags = "-shared -lpthread" `T.append` (sanitizerFlags sanitizer),
-  outputLocation = ObjAndBinDirs ("obj/" `T.append` platform) ".",
+  linkFlags = "-shared -lpthread" <> sanitizerFlags config,
+  outputLocation = ObjAndBinDirs ("obj/" <> platform config) ("lib/" <> platform config <> "-" <> buildType config),
   includeDirs = ["src"]
 }
 
-liblaminaFS platform sanitizer = makeCTarget $ liblaminaFSInfo platform sanitizer
-cleanLamina platform sanitizer = makeCleanTarget $ liblaminaFSInfo platform sanitizer
+liblaminaFS config = makeCTarget $ liblaminaFSInfo config
+cleanLamina config = makeCleanTarget $ liblaminaFSInfo config
 
-testsInfo platform sanitizer = (getCompiler platform) {
-  outputName = "test" `T.append` (exeExt platform),
-  targetName = "tests-" `T.append` platform,
+-- Test targets
+testsInfo config = (getCompiler $ platform config) {
+  outputName = "test" <> exeExt config,
+  targetName = "tests-" <> platform config <> "-" <> buildType config,
   srcDir = "tests",
-  commonCompileFlags = "-g -O2" `T.append` (sanitizerFlags sanitizer),
+  commonCompileFlags = buildFlags config <> sanitizerFlags config,
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++14",
-  linkFlags = "-L. -llaminaFS -lstdc++ -lpthread" `T.append` (sanitizerFlags sanitizer),
+  linkFlags = "-L./lib/" <> platform config <> "-" <> buildType config <> " -llaminaFS -lstdc++ -lpthread" <> sanitizerFlags config,
   extraLinkDeps = ["liblaminaFS.so"],
-  outputLocation = ObjAndBinDirs ("obj/" `T.append` platform) ".",
+  outputLocation = ObjAndBinDirs ("obj/" <> platform config) ("bin/" <> platform config <> "-" <> buildType config),
   includeDirs = ["src", "tests"]
 }
 
-tests platform sanitizer = addDependency (makeCTarget $ testsInfo platform sanitizer) $ liblaminaFS platform sanitizer
-cleanTests platform sanitizer = makeCleanTarget $ testsInfo platform sanitizer
+tests config = addDependency (makeCTarget $ testsInfo config) $ liblaminaFS config
+cleanTests config = makeCleanTarget $ testsInfo config
 
-allTarget platform sanitizer = makePhonyTarget "all" [liblaminaFS platform sanitizer, tests platform sanitizer]
+-- Targets
+allTarget config = makePhonyTarget "all" [liblaminaFS config, tests config]
+targets config = [allTarget config,  liblaminaFS config, cleanLamina config, tests config, cleanTests config]
 
-targets platform sanitizer = [allTarget platform sanitizer,  liblaminaFS platform sanitizer, cleanLamina platform sanitizer, tests platform sanitizer, cleanTests platform sanitizer]
-
+-- Configuration related functions
 getBuildPlatform = makeArgDictLookupFunc "PLATFORM" "local"
 getSanitizer = makeArgDictLookupFunc "SANITIZER" ""
+getBuildType = makeArgDictLookupFunc "BUILD" "release"
 getCompiler platform = if platform == "mingw32" then mingw32Config else defaultGXXConfig
+
+sanitizerToFlags "undefined" = " -fsanitize=undefined"
+sanitizerToFlags "address" = " -fsanitize=address"
+sanitizerToFlags "thread" = " -fsanitize=thread"
+sanitizerToFlags "" = ""
+sanitizerToFlags s@_ = error $ "Unknown sanitizer: \"" ++ s ++ "\" expected one of [undefined, address, thread]"
+
+buildTypeToFlags "debug" = "-g "
+buildTypeToFlags "release" = "-g -O2 "
+buildTypeToFlags "release-min" = "-O2 "
+buildTypeToFlags s@_ = error $ "Unknown build type: \"" ++ s ++ "\" expected one of [debug, release, release-min]"
 
 main = do
   argDict <- getArgDict
   let platform = T.pack $ getBuildPlatform argDict
-  let sanitizer = getSanitizer argDict
-  dib $ targets platform sanitizer
+  let buildType = getBuildType argDict
+  let configuration = Configuration {
+      platform = platform,
+      buildType = T.pack buildType,
+      exeExt = if platform == "mingw32" then ".exe" else "",
+      soExt = if platform == "mingw32" then ".dll" else ".so",
+      sanitizerFlags = sanitizerToFlags $ getSanitizer argDict,
+      buildFlags = buildTypeToFlags buildType
+    }
+  dib $ targets configuration

@@ -3,6 +3,7 @@
 *.so
 *.exe
 *.dll
-test
+bin/
 doc/
+lib/
 obj/

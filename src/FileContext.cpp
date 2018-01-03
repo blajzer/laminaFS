@@ -7,7 +7,9 @@
 
 #include "FileContext.h"
 
+#if !defined(LAMINAFS_DISABLE_DIRECTORY_DEVICE)
 #include "device/Directory.h"
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -111,6 +113,7 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 , _workItemQueue(alloc, maxQueuedWorkItems, &_workItemQueueSemaphore)
 , _alloc(alloc)
 {
+#if !defined(LAMINAFS_DISABLE_DIRECTORY_DEVICE)
 	DeviceInterface i;
 	i._create = &DirectoryDevice::create;
 	i._destroy = &DirectoryDevice::destroy;
@@ -123,6 +126,7 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 	i._deleteDir = &DirectoryDevice::deleteDir;
 
 	registerDeviceInterface(i);
+#endif
 
 	_processing = false;
 	startProcessingThread();
@@ -178,10 +182,15 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 }
 
 Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &resultCode) {
+	if (deviceType >= _interfaces.size()) {
+		resultCode = LFS_INVALID_DEVICE;
+		return nullptr;
+	}
+
 	ErrorCode result = LFS_OK;
 	MountInfo *m = new(_alloc.alloc(_alloc.allocator, sizeof(MountInfo), alignof(MountInfo))) MountInfo();
-
 	DeviceInterface *interface = _interfaces[deviceType];
+
 	result = interface->_create(&_alloc, devicePath, &m->_device);
 	m->_interface = interface;
 
@@ -496,6 +505,7 @@ void FileContext::processingFunc(FileContext *ctx) {
 				if (mount) {
 					item->_bufferBytes = mount->_interface->_writeFile(mount->_device, devicePath, item->_buffer, item->_bufferBytes, item->_operation == LFS_OP_APPEND, &item->_resultCode);
 				} else {
+					item->_bufferBytes = 0;
 					item->_resultCode = LFS_UNSUPPORTED;
 				}
 				break;

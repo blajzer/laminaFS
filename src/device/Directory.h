@@ -2,6 +2,8 @@
 // LaminaFS is Copyright (c) 2016 Brett Lajzer
 // See LICENSE for license information.
 
+#if !defined(LAMINAFS_DISABLE_DIRECTORY_DEVICE)
+
 #include <cstddef>
 #include <cstdint>
 
@@ -43,3 +45,5 @@ private:
 };
 
 }
+
+#endif // LAMINAFS_DISABLE_DIRECTORY_DEVICE

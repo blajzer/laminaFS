@@ -34,7 +34,8 @@ enum lfs_error_code_t {
 	LFS_UNSUPPORTED,
 	LFS_ALREADY_EXISTS,
 	LFS_PERMISSIONS_ERROR,
-	LFS_OUT_OF_SPACE
+	LFS_OUT_OF_SPACE,
+	LFS_INVALID_DEVICE
 };
 
 // default allocator

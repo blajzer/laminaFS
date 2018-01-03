@@ -1,5 +1,6 @@
 // LaminaFS is Copyright (c) 2016 Brett Lajzer
 // See LICENSE for license information.
+#if !defined(LAMINAFS_DISABLE_DIRECTORY_DEVICE)
 
 #ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS
@@ -505,3 +506,5 @@ ErrorCode DirectoryDevice::deleteDir(void *device, const char *path) {
 	dev->freeDevicePath(diskPath);
 	return resultCode;
 }
+
+#endif // LAMINAFS_DISABLE_DIRECTORY_DEVICE

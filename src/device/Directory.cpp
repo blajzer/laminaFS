@@ -272,14 +272,14 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 	int file = dir->openFile(filePath, O_RDONLY);
 
 	if (file != -1) {
-		uint64_t fileSize = (uint64_t)lseek(file, (off_t)0, SEEK_END);
-		if (fileSize == (uint64_t)-1) {
+		uint64_t fileSize = static_cast<uint64_t>(lseek(file, 0, SEEK_END));
+		if (fileSize == static_cast<uint64_t>(-1)) {
 			*outError = convertError(errno);
 			close(file);
 			return 0;
 		}
 
-		if (fileSize && lseek(file, (off_t)0, SEEK_SET) == 0) {
+		if (fileSize && lseek(file, 0, SEEK_SET) == 0) {
 			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 			if (*buffer) {
 				// XXX: attempt read and retry if necessary
@@ -297,10 +297,10 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 					return 0;
 				}
 
-				bytesRead = (uint64_t)bytes;
+				bytesRead = static_cast<uint64_t>(bytes);
 
 				if (nullTerminate) {
-					(*(char**)buffer)[bytesRead] = 0;
+					(*reinterpret_cast<char**>(buffer))[bytesRead] = 0;
 				}
 			}
 		} else {
@@ -355,7 +355,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 		if (bytes == -1) {
 			*outError = convertError(errno);
 		} else {
-			bytesWritten = (uint64_t)bytes;
+			bytesWritten = static_cast<uint64_t>(bytes);
 		}
 
 		close(file);

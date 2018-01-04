@@ -30,7 +30,7 @@ liblaminaFSInfo config = (getCompiler $ platform config) {
   srcDir = "src",
   commonCompileFlags = "-Wall -Wextra -Werror -fPIC " <> buildFlags config <> sanitizerFlags config,
   cCompileFlags = "--std=c11",
-  cxxCompileFlags = "--std=c++14",
+  cxxCompileFlags = "--std=c++14 -Wold-style-cast",
   linkFlags = "-shared -lpthread" <> sanitizerFlags config,
   outputLocation = ObjAndBinDirs ("obj/" <> platform config <> "-" <> buildType config) ("lib/" <> platform config <> "-" <> buildType config),
   includeDirs = ["src"]
@@ -46,7 +46,7 @@ testsInfo config = (getCompiler $ platform config) {
   srcDir = "tests",
   commonCompileFlags = "-Wall -Wextra -Werror " <> buildFlags config <> sanitizerFlags config,
   cCompileFlags = "--std=c11",
-  cxxCompileFlags = "--std=c++14",
+  cxxCompileFlags = "--std=c++14 -Wold-style-cast",
   linkFlags = "-L./lib/" <> platform config <> "-" <> buildType config <> " -llaminaFS -lstdc++ -lpthread" <> sanitizerFlags config,
   extraLinkDeps = ["liblaminaFS.so"],
   outputLocation = ObjAndBinDirs ("obj/" <> platform config <> "-" <> buildType config) ("bin/" <> platform config <> "-" <> buildType config),

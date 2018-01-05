@@ -48,7 +48,7 @@ testsInfo config = (getCompiler $ platform config) {
   cCompileFlags = "--std=c11",
   cxxCompileFlags = "--std=c++14 -Wold-style-cast",
   linkFlags = "-L./lib/" <> platform config <> "-" <> buildType config <> " -llaminaFS -lstdc++ -lpthread" <> sanitizerFlags config,
-  extraLinkDeps = ["liblaminaFS.so"],
+  extraLinkDeps = ["lib/" <> platform config <> "-" <> buildType config <> "/liblaminaFS.so"],
   outputLocation = ObjAndBinDirs ("obj/" <> platform config <> "-" <> buildType config) ("bin/" <> platform config <> "-" <> buildType config),
   includeDirs = ["src", "tests"]
 }

@@ -258,7 +258,7 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 			if (!ReadFile(file, *buffer, (DWORD)fileSize, &bytesReadTemp, nullptr)) {
 				*outError = convertError(GetLastError());
 			} else if (nullTerminate) {
-				(*(char**)buffer)[bytesRead] = 0;
+				(*(char**)buffer)[bytesReadTemp] = 0;
 			}
 
 			bytesRead = bytesReadTemp;

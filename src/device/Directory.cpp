@@ -32,7 +32,7 @@ namespace {
 constexpr uint32_t MAX_PATH_LEN = 1024;
 
 int widen(const char *inStr, WCHAR *outStr, size_t outStrLen) {
-	return MultiByteToWideChar(CP_UTF8, 0, inStr, -1, outStr, (int)outStrLen);
+	return MultiByteToWideChar(CP_UTF8, 0, inStr, -1, outStr, static_cast<int>(outStrLen));
 }
 
 ErrorCode convertError(DWORD error) {
@@ -255,10 +255,10 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 
 			DWORD bytesReadTemp = 0;
-			if (!ReadFile(file, *buffer, (DWORD)fileSize, &bytesReadTemp, nullptr)) {
+			if (!ReadFile(file, *buffer, static_cast<DWORD>(fileSize), &bytesReadTemp, nullptr)) {
 				*outError = convertError(GetLastError());
 			} else if (nullTerminate) {
-				(*(char**)buffer)[bytesReadTemp] = 0;
+				(*reinterpret_cast<char**>(buffer))[bytesReadTemp] = 0;
 			}
 
 			bytesRead = bytesReadTemp;
@@ -332,7 +332,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 		}
 
 		DWORD temp = 0;
-		if (!WriteFile(file, buffer, (DWORD)bytesToWrite, &temp, nullptr)) {
+		if (!WriteFile(file, buffer, static_cast<DWORD>(bytesToWrite), &temp, nullptr)) {
 				*outError = LFS_GENERIC_ERROR;
 		} else {
 			bytesWritten = temp;

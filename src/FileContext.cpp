@@ -54,6 +54,12 @@ struct lfs_work_item_t {
 void *default_alloc_func(void *, size_t bytes, size_t alignment) {
 #ifdef _WIN32
 	return _aligned_malloc(bytes, alignment);
+#elif __APPLE__
+	void *ptr = nullptr;
+	// XXX: macOS requires sizeof(void*)  multiples for alignment
+	size_t aligned_alignment = (alignment + sizeof(void*) - 1) & (~(sizeof(void*) - 1));
+	posix_memalign(&ptr, aligned_alignment, bytes);
+	return ptr;
 #else
 	return memalign(alignment, bytes);
 #endif

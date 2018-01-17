@@ -46,6 +46,9 @@ ErrorCode convertError(DWORD error) {
 	case ERROR_ACCESS_DENIED:
 		result = LFS_PERMISSIONS_ERROR;
 		break;
+	case ERROR_ALREADY_EXISTS:
+		result = LFS_ALREADY_EXISTS;
+		break;
 	case ERROR_DISK_FULL:
 		result = LFS_OUT_OF_SPACE;
 		break;

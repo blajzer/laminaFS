@@ -18,6 +18,8 @@ using namespace laminaFS;
 
 namespace {
 const char *testString = "this is the C++ test string.";
+const char *testString2 = "this is our C++ test string.";
+constexpr uint64_t testStringOffset = 8;
 
 const char *normalizationTestStrings[] = {
 	"//path//with/a/////lot/of/slashes///",
@@ -98,6 +100,42 @@ int test_cpp_api() {
 		WaitForWorkItem(writeTest);
 		TEST(LFS_OK, WorkItemGetResult(writeTest), "Write file /two/test.txt");
 		TEST(strlen(testString), WorkItemGetBytes(writeTest), "Check bytes written");
+
+		ctx.releaseWorkItem(writeTest);
+	}
+
+	// test segment writing and reading
+	{
+		WorkItem *writeTest = ctx.writeFileSegment("/two/test.txt", testStringOffset, "our", 3);
+		WaitForWorkItem(writeTest);
+		TEST(LFS_OK, WorkItemGetResult(writeTest), "Write file segment to /two/test.txt");
+		TEST(3, WorkItemGetBytes(writeTest), "Check bytes written");
+
+		ctx.releaseWorkItem(writeTest);
+
+		WorkItem *readTest = ctx.readFile("/two/test.txt", true);
+		WaitForWorkItem(readTest);
+		TEST(LFS_OK, WorkItemGetResult(readTest), "Read file /two/test.txt");
+		TEST(0, strcmp(static_cast<char*>(WorkItemGetBuffer(readTest)), testString2), "Compare string.");
+		WorkItemFreeBuffer(readTest);
+
+		ctx.releaseWorkItem(readTest);
+
+		WorkItem *readTest2 = ctx.readFileSegment("/two/test.txt", testStringOffset, 3, true);
+		WaitForWorkItem(readTest2);
+		TEST(LFS_OK, WorkItemGetResult(readTest2), "Read file segment /two/test.txt");
+		TEST(0, strcmp(static_cast<char*>(WorkItemGetBuffer(readTest2)), "our"), "Compare string segment.");
+		WorkItemFreeBuffer(readTest2);
+
+		ctx.releaseWorkItem(readTest2);
+	}
+
+	// test segment reading
+	{
+		WorkItem *writeTest = ctx.writeFileSegment("/two/test.txt", testStringOffset, "our", 3);
+		WaitForWorkItem(writeTest);
+		TEST(LFS_OK, WorkItemGetResult(writeTest), "Write file segment to /two/test.txt");
+		TEST(3, WorkItemGetBytes(writeTest), "Check bytes written");
 
 		ctx.releaseWorkItem(writeTest);
 	}

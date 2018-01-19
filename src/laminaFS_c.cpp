@@ -44,8 +44,20 @@ lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath
 	return CTX(ctx)->readFile(filepath, nullTerminate, nullptr, callback, callbackUserData);
 }
 
+lfs_work_item_t *lfs_read_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, void *callbackUserData) {
+	return CTX(ctx)->readFileSegment(filepath, offset, maxBytes, nullTerminate, alloc, callback, callbackUserData);
+}
+
+lfs_work_item_t *lfs_read_file_segment_ctx_alloc(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, lfs_work_item_callback_t callback, void *callbackUserData) {
+	return CTX(ctx)->readFileSegment(filepath, offset, maxBytes, nullTerminate, nullptr, callback, callbackUserData);
+}
+
 lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData) {
 	return CTX(ctx)->writeFile(filepath, buffer, bufferBytes, callback, callbackUserData);
+}
+
+lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData) {
+	return CTX(ctx)->writeFileSegment(filepath, offset, buffer, bufferBytes, callback, callbackUserData);
 }
 
 lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData) {

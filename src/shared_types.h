@@ -38,6 +38,12 @@ enum lfs_error_code_t {
 	LFS_INVALID_DEVICE
 };
 
+enum lfs_write_mode_t {
+	LFS_WRITE_TRUNCATE,
+	LFS_WRITE_APPEND,
+	LFS_WRITE_SEGMENT
+};
+
 // default allocator
 #if __cplusplus
 extern "C" {

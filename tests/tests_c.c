@@ -7,6 +7,8 @@
 #include <string.h>
 
 const char *testString = "this is the C test string.";
+const char *testString2 = "this is our C test string.";
+const uint64_t testStringOffset = 8;
 
 int test_c_api() {
 	TEST_INIT();
@@ -44,6 +46,32 @@ int test_c_api() {
 		TEST(strlen(testString), lfs_work_item_get_bytes(writeTest), "Check bytes written");
 
 		lfs_release_work_item(ctx, writeTest);
+	}
+
+	// test segment writing and reading
+	{
+		struct lfs_work_item_t *writeTest = lfs_write_file_segment(ctx, "/two/test.txt", testStringOffset, "our", 3, NULL, NULL);
+		lfs_wait_for_work_item(writeTest);
+		TEST(LFS_OK, lfs_work_item_get_result(writeTest), "Write file segment to /two/test.txt");
+		TEST(3, lfs_work_item_get_bytes(writeTest), "Check bytes written");
+
+		lfs_release_work_item(ctx, writeTest);
+
+		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/two/test.txt", true, NULL, NULL);
+		lfs_wait_for_work_item(readTest);
+		TEST(LFS_OK, lfs_work_item_get_result(readTest), "Read file /two/test.txt");
+		TEST(0, strcmp((char*)lfs_work_item_get_buffer(readTest), testString2), "Compare string.");
+		lfs_work_item_free_buffer(readTest);
+
+		lfs_release_work_item(ctx, readTest);
+
+		struct lfs_work_item_t *readTest2 = lfs_read_file_segment_ctx_alloc(ctx, "/two/test.txt", testStringOffset, 3, true, NULL, NULL);
+		lfs_wait_for_work_item(readTest2);
+		TEST(LFS_OK, lfs_work_item_get_result(readTest2), "Read file segment /two/test.txt");
+		TEST(0, strcmp((char*)lfs_work_item_get_buffer(readTest2), "our"), "Compare string segment.");
+		lfs_work_item_free_buffer(readTest2);
+
+		lfs_release_work_item(ctx, readTest2);
 	}
 
 	// test file existence

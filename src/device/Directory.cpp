@@ -243,7 +243,7 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *
 	return size;
 }
 
-size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *alloc, void **buffer, bool nullTerminate, ErrorCode *outError) {
+size_t DirectoryDevice::readFile(void *device, const char *filePath, uint64_t offset, uint64_t maxBytes, Allocator *alloc, void **buffer, bool nullTerminate, ErrorCode *outError) {
 	size_t bytesRead = 0;
 	DirectoryDevice *dir = static_cast<DirectoryDevice*>(device);
 #ifdef _WIN32
@@ -255,6 +255,14 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 		size_t fileSize = result.QuadPart;
 
 		if (fileSize) {
+			LARGE_INTEGER offsetStruct;
+			offsetStruct.QuadPart = offset;
+			if (SetFilePointer(file, offsetStruct.LowPart, &offsetStruct.HighPart, FILE_BEGIN) == INVALID_SET_FILE_POINTER){
+				CloseHandle(file);
+				return bytesRead;
+			}
+
+			fileSize = std::min(fileSize - offset, maxBytes);
 			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 
 			DWORD bytesReadTemp = 0;
@@ -282,8 +290,10 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 			return 0;
 		}
 
-		if (fileSize && lseek(file, 0, SEEK_SET) == 0) {
+		if (fileSize && lseek(file, offset, SEEK_SET) == static_cast<off_t>(offset)) {
+			fileSize = std::min(fileSize - offset, maxBytes);
 			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
+
 			if (*buffer) {
 				// XXX: attempt read and retry if necessary
 				ssize_t bytes = -1;
@@ -318,16 +328,41 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, Allocator *
 	return bytesRead;
 }
 
-size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buffer, size_t bytesToWrite, bool append, ErrorCode *outError) {
+size_t DirectoryDevice::writeFile(void *device, const char *filePath, uint64_t offset, void *buffer, size_t bytesToWrite, lfs_write_mode_t writeMode, ErrorCode *outError) {
 	size_t bytesWritten = 0;
 	DirectoryDevice *dev = static_cast<DirectoryDevice*>(device);
 
 #ifdef _WIN32
-	HANDLE file = dev->openFile(filePath, GENERIC_WRITE, append ? OPEN_ALWAYS : CREATE_ALWAYS);
+	DWORD createFlags = 0;
+	switch(writeMode) {
+	case LFS_WRITE_TRUNCATE:
+		createFlags = CREATE_ALWAYS;
+		break;
+	case LFS_WRITE_APPEND:
+		createFlags = OPEN_ALWAYS;
+		break;
+	case LFS_WRITE_SEGMENT:
+		createFlags = OPEN_EXISTING;
+		break;
+	}
+
+	HANDLE file = dev->openFile(filePath, GENERIC_WRITE, createFlags);
 
 	if (file) {
-		if (append) {
-			if (SetFilePointer(file, 0, nullptr, FILE_END) == INVALID_SET_FILE_POINTER) {
+		if (writeMode == LFS_WRITE_APPEND) {
+			LARGE_INTEGER offsetStruct;
+			offsetStruct.QuadPart = 0;
+
+			if (SetFilePointer(file, offsetStruct.LowPart, &offsetStruct.HighPart, FILE_END) == INVALID_SET_FILE_POINTER) {
+				*outError = LFS_GENERIC_ERROR;
+				CloseHandle(file);
+				return bytesWritten;
+			}
+		} else if (writeMode == LFS_WRITE_SEGMENT){
+			LARGE_INTEGER offsetStruct;
+			offsetStruct.QuadPart = offset;
+
+			if (SetFilePointer(file, offsetStruct.LowPart, &offsetStruct.HighPart, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
 				*outError = LFS_GENERIC_ERROR;
 				CloseHandle(file);
 				return bytesWritten;
@@ -346,9 +381,22 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, void *buff
 
 	CloseHandle(file);
 #else
-	int file = dev->openFile(filePath, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC));
+	int openFlags = 0;
+	switch(writeMode) {
+	case LFS_WRITE_TRUNCATE:
+		openFlags = O_TRUNC;
+		break;
+	case LFS_WRITE_APPEND:
+		openFlags = O_APPEND;
+		break;
+	case LFS_WRITE_SEGMENT:
+		openFlags = 0;
+		break;
+	}
 
-	if (file != -1) {
+	int file = dev->openFile(filePath, O_WRONLY | O_CREAT | openFlags);
+
+	if (file != -1 && lseek(file, static_cast<off_t>(offset), SEEK_SET) == static_cast<off_t>(offset)) {
 		// XXX: attempt write and retry if necessary
 		ssize_t bytes = -1;
 		do {

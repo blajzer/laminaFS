@@ -1,3 +1,4 @@
+* Replace size_t with uint64_t in device interface.
 * Better documentation
 * WITH_CHECKS version for asserting that work item is complete before accessing.
 * Callback test and documentation/example

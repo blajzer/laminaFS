@@ -1,2 +1,2 @@
 #!/bin/sh
-wine ./test.exe
+wine ./bin/mingw32-release/test.exe

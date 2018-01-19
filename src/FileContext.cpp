@@ -30,6 +30,7 @@ enum lfs_file_operation_t {
 	LFS_OP_READ,
 	LFS_OP_WRITE,
 	LFS_OP_APPEND,
+	LFS_OP_WRITE_SEGMENT,
 	LFS_OP_DELETE,
 	LFS_OP_CREATE_DIR,
 	LFS_OP_DELETE_DIR,
@@ -45,6 +46,7 @@ struct lfs_work_item_t {
 
 	void *_buffer = nullptr;
 	uint64_t _bufferBytes = 0;
+	uint64_t _offset = 0;
 
 	lfs_error_code_t _resultCode = LFS_OK;
 	bool _nullTerminate = false;
@@ -381,11 +383,17 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 }
 
 WorkItem *FileContext::readFile(const char *filepath, bool nullTerminate, Allocator *alloc, WorkItemCallback callback, void *callbackUserData) {
+	return readFileSegment(filepath, 0, static_cast<uint64_t>(-1), nullTerminate, alloc, callback, callbackUserData);
+}
+
+WorkItem *FileContext::readFileSegment(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, Allocator *alloc, WorkItemCallback callback, void *callbackUserData) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ, callback, callbackUserData);
 
 	if (item) {
 		item->_allocator = alloc ? *alloc : _alloc;
 		item->_nullTerminate = nullTerminate;
+		item->_bufferBytes = maxBytes;
+		item->_offset = offset;
 
 		_workItemQueue.push(item);
 	}
@@ -393,12 +401,23 @@ WorkItem *FileContext::readFile(const char *filepath, bool nullTerminate, Alloca
 	return item;
 }
 
-WorkItem *FileContext::writeFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE, callback, callbackUserData);
+WorkItem *FileContext::writeFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = writeFileSegment(filepath, 0, buffer, bufferBytes, callback, callbackUserData);
 
 	if (item) {
-		item->_buffer = buffer;
+		item->_operation = LFS_OP_WRITE;
+	}
+
+	return item;
+}
+
+WorkItem *FileContext::writeFileSegment(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE_SEGMENT, callback, callbackUserData);
+
+	if (item) {
+		item->_buffer = const_cast<void*>(buffer);
 		item->_bufferBytes = bufferBytes;
+		item->_offset = offset;
 
 		_workItemQueue.push(item);
 	}
@@ -497,19 +516,35 @@ void FileContext::processingFunc(FileContext *ctx) {
 				const char *devicePath;
 				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, &item->_allocator, &item->_buffer, item->_nullTerminate, &item->_resultCode);
+					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, item->_offset, item->_bufferBytes, &item->_allocator, &item->_buffer, item->_nullTerminate, &item->_resultCode);
 				} else {
 					item->_resultCode = LFS_NOT_FOUND;
 				}
 				break;
 			}
 			case LFS_OP_WRITE:
+			case LFS_OP_WRITE_SEGMENT:
 			case LFS_OP_APPEND:
 			{
 				const char *devicePath;
 				MountInfo *mount = ctx->findMutableMountAndPath(item->_filename, &devicePath, item->_operation);
 				if (mount) {
-					item->_bufferBytes = mount->_interface->_writeFile(mount->_device, devicePath, item->_buffer, item->_bufferBytes, item->_operation == LFS_OP_APPEND, &item->_resultCode);
+					lfs_write_mode_t writeMode = LFS_WRITE_TRUNCATE;
+					switch (item->_operation) {
+					case LFS_OP_WRITE:
+						writeMode = LFS_WRITE_TRUNCATE;
+						break;
+					case LFS_OP_WRITE_SEGMENT:
+						writeMode = LFS_WRITE_SEGMENT;
+						break;
+					case LFS_OP_APPEND:
+						writeMode = LFS_WRITE_APPEND;
+						break;
+					default:
+						break;
+					}
+
+					item->_bufferBytes = mount->_interface->_writeFile(mount->_device, devicePath, item->_offset, item->_buffer, item->_bufferBytes, writeMode, &item->_resultCode);
 				} else {
 					item->_bufferBytes = 0;
 					item->_resultCode = LFS_UNSUPPORTED;

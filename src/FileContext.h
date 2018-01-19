@@ -112,9 +112,9 @@ public:
 
 		typedef bool (*FileExistsFunc)(void *, const char *);
 		typedef size_t (*FileSizeFunc)(void *, const char *, ErrorCode *);
-		typedef size_t (*ReadFileFunc)(void *, const char *, lfs_allocator_t *, void **, bool, ErrorCode *);
+		typedef size_t (*ReadFileFunc)(void *, const char *, uint64_t, uint64_t, lfs_allocator_t *, void **, bool, ErrorCode *);
 
-		typedef size_t (*WriteFileFunc)(void *, const char *, void *, size_t, bool, ErrorCode *);
+		typedef size_t (*WriteFileFunc)(void *, const char *, uint64_t, void *, size_t, lfs_write_mode_t, ErrorCode *);
 		typedef ErrorCode (*DeleteFileFunc)(void *, const char *);
 
 		typedef ErrorCode (*CreateDirFunc)(void *, const char *);
@@ -163,6 +163,17 @@ public:
 	//! @return a WorkItem representing the work to be done
 	WorkItem *readFile(const char *filepath, bool nullTerminate, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
 
+	//! Reads a portion of a file.
+	//! @param filepath the path to the file to read
+	//! @param offset the offset to start reading from
+	//! @param maxBytes the maximum number of bytes to read
+	//! @param nullTerminate whether or not to add a NULL to the end of the buffer so it can be directly used as a C-string.
+	//! @param alloc the allocator to use. If NULL will use the context's allocator.
+	//! @param callback optional callback
+	//! @param callbackUserData optional user data pointer for callback
+	//! @return a WorkItem representing the work to be done
+	WorkItem *readFileSegment(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+
 	//! Writes a buffer to a file.
 	//! @param filepath the path to the file to write
 	//! @param buffer the buffer to write
@@ -170,7 +181,17 @@ public:
 	//! @param callback optional callback
 	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *writeFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *writeFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+
+	//! Writes a buffer to a given offset in a file.
+	//! @param filepath the path to the file to write
+	//! @param offset the offset to write to
+	//! @param buffer the buffer to write
+	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @param callback optional callback
+	//! @param callbackUserData optional user data pointer for callback
+	//! @return a WorkItem representing the work to be done
+	WorkItem *writeFileSegment(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
 
 	//! Appends a buffer to a file.
 	//! @param filepath the path to the file to append

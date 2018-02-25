@@ -290,34 +290,38 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, uint64_t of
 			return 0;
 		}
 
-		if (fileSize && lseek(file, offset, SEEK_SET) == static_cast<off_t>(offset)) {
-			fileSize = std::min(fileSize - offset, maxBytes);
-			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
+		if (fileSize) {
+			off_t seekedOffset = lseek(file, offset, SEEK_SET) == static_cast<off_t>(offset);
 
-			if (*buffer) {
-				// XXX: attempt read and retry if necessary
-				ssize_t bytes = -1;
-				do {
-					bytes = read(file, *buffer, fileSize);
-				} while (bytes == -1 && errno == EINTR);
+			if (seekedOffset != static_cast<off_t>(-1)) {
+				fileSize = std::min(fileSize - offset, maxBytes);
+				*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
 
-				if (bytes == -1) {
-					alloc->free(alloc->allocator, *buffer);
-					*buffer = nullptr;
+				if (*buffer) {
+					// XXX: attempt read and retry if necessary
+					ssize_t bytes = -1;
+					do {
+						bytes = read(file, *buffer, fileSize);
+					} while (bytes == -1 && errno == EINTR);
 
-					*outError = convertError(errno);
-					close(file);
-					return 0;
+					if (bytes == -1) {
+						alloc->free(alloc->allocator, *buffer);
+						*buffer = nullptr;
+
+						*outError = convertError(errno);
+						close(file);
+						return 0;
+					}
+
+					bytesRead = static_cast<uint64_t>(bytes);
+
+					if (nullTerminate) {
+						(*reinterpret_cast<char**>(buffer))[bytesRead] = 0;
+					}
 				}
-
-				bytesRead = static_cast<uint64_t>(bytes);
-
-				if (nullTerminate) {
-					(*reinterpret_cast<char**>(buffer))[bytesRead] = 0;
-				}
+			} else {
+				*outError = convertError(errno);
 			}
-		} else {
-			*outError = convertError(errno);
 		}
 
 		close(file);

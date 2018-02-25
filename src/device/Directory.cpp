@@ -8,12 +8,14 @@
 
 #include "Directory.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
 #ifdef _WIN32
 #define UNICODE 1
 #define _UNICODE 1
+#define NOMINMAX
 #include <windows.h>
 #include <shellapi.h>
 #else

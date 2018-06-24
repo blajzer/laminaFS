@@ -3,7 +3,21 @@ LaminaFS
 
 == Description
 LaminaFS is a simple, portable C/C++ filesystem abstraction layer designed
-to have a modern API while offering good performance and extensibility.
+to have a modern, asynchronous API while offering good performance and extensibility.
+
+As its name might suggest, LaminaFS is designed as a virtual overlay filesystem.
+It allows for the mapping of physical device paths to virtual paths, where the
+virtual path mounts can overlap. A filepath is resolved from a virtual path to
+a physical path by matching in reverse mount order (newest mounts first) and
+against mount capabilities (read/write/delete/etc...).
+
+LaminaFS was originally designed for use in games, but is generic enough for
+other use cases. An example usage (from games) where LaminaFS really shines is
+in additive patching: the base data directory or archive is mounted first, and
+each patch contains only the files that have changed in that patch, mounted in
+order of release date. Due to the physical path resolution order, the most recent
+files will always be accessed first. This additionally enables user modding via
+always mounting a user data directory tree last.
 
 == License
 LaminaFS is licensed under the MIT License. See the file LICENSE for more information.

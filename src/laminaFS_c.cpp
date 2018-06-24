@@ -32,6 +32,10 @@ lfs_mount_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char 
 	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath, *returnCode);
 }
 
+lfs_mount_t lfs_create_mount_with_permissions(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, enum lfs_error_code_t *returnCode, uint32_t permissions) {
+	return CTX(ctx)->createMount(deviceType, mountPoint, devicePath, *returnCode, permissions);
+}
+
 bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount) {
 	return CTX(ctx)->releaseMount(mount);
 }

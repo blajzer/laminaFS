@@ -44,6 +44,17 @@ enum lfs_write_mode_t {
 	LFS_WRITE_SEGMENT
 };
 
+enum lfs_mount_permissions_t {
+	LFS_MOUNT_DEFAULT = 0,
+	LFS_MOUNT_READ = 1 << 0,
+	LFS_MOUNT_WRITE_FILE = 1 << 1,
+	LFS_MOUNT_DELETE_FILE = 1 << 2,
+	LFS_MOUNT_CREATE_DIR = 1 << 3,
+	LFS_MOUNT_DELETE_DIR = 1 << 4,
+	LFS_MOUNT_WRITE = LFS_MOUNT_WRITE_FILE | LFS_MOUNT_DELETE_FILE | LFS_MOUNT_CREATE_DIR | LFS_MOUNT_DELETE_DIR,
+	LFS_MOUNT_ALL_PERMISSIONS = LFS_MOUNT_READ | LFS_MOUNT_WRITE
+};
+
 // default allocator
 #if __cplusplus
 extern "C" {

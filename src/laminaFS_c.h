@@ -80,6 +80,16 @@ LFS_C_API int32_t lfs_register_device_interface(lfs_context_t ctx, struct lfs_de
 //! @return the mount
 LFS_C_API lfs_mount_t lfs_create_mount(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, enum lfs_error_code_t *returnCode);
 
+//! Creates a mount on a context with a specific set of permissions
+//! @param ctx the context
+//! @param deviceType the type index of the device to create the mount with
+//! @param mountPoint the virtual path to mount this device to
+//! @param devicePath the path to pass into the device
+//! @param returnCode the return code
+//! @param permissions the mount permissions
+//! @return the mount
+LFS_C_API lfs_mount_t lfs_create_mount_with_permissions(lfs_context_t ctx, uint32_t deviceType, const char *mountPoint, const char *devicePath, enum lfs_error_code_t *returnCode, uint32_t permissions);
+
 //! Removes a mount from a context.
 //! Finishes all processing work items and suspends processing while it runs.
 //! @param ctx the context

@@ -145,8 +145,9 @@ public:
 	//! @param mountPoint the virtual path to mount this device to
 	//! @param devicePath the path to pass into the device
 	//! @param returnCode the return code
+	//! @param mountPermissions the permissions to create the mount with
 	//! @return the mount
-	Mount createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &returnCode);
+	Mount createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &returnCode, uint32_t mountPermissions = LFS_MOUNT_DEFAULT);
 
 	//! Releases a mount.
 	//! Finishes all processing work items and suspends processing while it runs.
@@ -265,6 +266,7 @@ private:
 		void *_device;
 		DeviceInterface *_interface;
 		uint32_t _prefixLen;
+		uint32_t _permissions;
 	};
 
 	MountInfo* findMountAndPath(const char *path, const char **devicePath);

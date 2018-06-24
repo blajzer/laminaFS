@@ -189,15 +189,29 @@ int32_t FileContext::registerDeviceInterface(DeviceInterface &interface) {
 	return result;
 }
 
-Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &resultCode) {
+Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, const char *devicePath, ErrorCode &resultCode, uint32_t mountPermissions) {
 	if (deviceType >= _interfaces.size()) {
 		resultCode = LFS_INVALID_DEVICE;
 		return nullptr;
 	}
 
+	DeviceInterface *interface = _interfaces[deviceType];
+
+	// check permissions against device interface's supported permissions
+	uint32_t supportedPermissions = LFS_MOUNT_READ |
+		(interface->_writeFile != nullptr ? LFS_MOUNT_WRITE_FILE : 0) |
+		(interface->_deleteFile != nullptr ? LFS_MOUNT_DELETE_FILE : 0) |
+		(interface->_createDir != nullptr ? LFS_MOUNT_CREATE_DIR : 0) |
+		(interface->_deleteDir != nullptr ? LFS_MOUNT_DELETE_DIR : 0);
+
+	uint32_t calculatedPermissions = mountPermissions == LFS_MOUNT_DEFAULT ? supportedPermissions : (mountPermissions & supportedPermissions);
+	if (calculatedPermissions == 0) {
+		resultCode = LFS_PERMISSIONS_ERROR;
+		return nullptr;
+	}
+
 	ErrorCode result = LFS_OK;
 	MountInfo *m = new(_alloc.alloc(_alloc.allocator, sizeof(MountInfo), alignof(MountInfo))) MountInfo();
-	DeviceInterface *interface = _interfaces[deviceType];
 
 	result = interface->_create(&_alloc, devicePath, &m->_device);
 	m->_interface = interface;
@@ -207,6 +221,7 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 		m->_prefix = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * (mountLen + 1), alignof(char)));
 		m->_prefixLen = static_cast<uint32_t>(mountLen);
 		strcpy(m->_prefix, mountPoint);
+		m->_permissions = calculatedPermissions;
 
 		_mounts.push_back(m);
 		LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
@@ -248,6 +263,9 @@ FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const ch
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {
+		if (((*mount)->_permissions & LFS_MOUNT_READ) == 0)
+			continue;
+
 		const char *foundMount = strstr(path, (*mount)->_prefix);
 		if (foundMount && foundMount == path && (path[(*mount)->_prefixLen] == '/' || (*mount)->_prefixLen == 1)) {
 			LOG("  found matching mount %s\n", (*mount)->_prefix);
@@ -281,10 +299,10 @@ FileContext::MountInfo* FileContext::findMutableMountAndPath(const char *path, c
 
 			*devicePath = (*mount)->_prefixLen == 1 ? path : path + (*mount)->_prefixLen;
 
-			if ( ((op == LFS_OP_WRITE || op == LFS_OP_APPEND) && (*mount)->_interface->_writeFile == nullptr)
-			|| (op == LFS_OP_DELETE && (*mount)->_interface->_deleteFile == nullptr)
-			|| (op == LFS_OP_CREATE_DIR && (*mount)->_interface->_createDir == nullptr)
-			|| (op == LFS_OP_DELETE_DIR && (*mount)->_interface->_deleteDir == nullptr)) {
+			if ( ((op == LFS_OP_WRITE || op == LFS_OP_APPEND) && (((*mount)->_permissions & LFS_MOUNT_WRITE_FILE) == 0))
+			|| (op == LFS_OP_DELETE && (((*mount)->_permissions & LFS_MOUNT_DELETE_FILE) == 0))
+			|| (op == LFS_OP_CREATE_DIR && (((*mount)->_permissions & LFS_MOUNT_CREATE_DIR) == 0))
+			|| (op == LFS_OP_DELETE_DIR && (((*mount)->_permissions & LFS_MOUNT_DELETE_DIR) == 0))) {
 				*devicePath = nullptr;
 				continue;
 			} else {

@@ -41,6 +41,7 @@ struct lfs_work_item_t {
 	lfs_work_item_callback_t _callback = nullptr;
 	void *_callbackUserData = nullptr;
 	lfs_allocator_t _allocator;
+	FileContext* _context = nullptr;
 
 	char *_filename = nullptr;
 
@@ -50,7 +51,7 @@ struct lfs_work_item_t {
 
 	lfs_error_code_t _resultCode = LFS_OK;
 	bool _nullTerminate = false;
-	std::atomic<bool> _completed;
+	bool _completed = false;
 };
 
 void *default_alloc_func(void *, size_t bytes, size_t alignment) {
@@ -104,12 +105,13 @@ uint64_t WorkItemGetBytes(const WorkItem *workItem) {
 }
 
 bool WorkItemCompleted(const WorkItem *workItem) {
-	return workItem->_completed.load(std::memory_order_acquire);
+	std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
+	return workItem->_completed;
 }
 
 void WaitForWorkItem(const WorkItem *workItem) {
-	while (!workItem->_completed.load(std::memory_order_acquire))
-		std::this_thread::yield();
+	std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
+	workItem->_context->getCompletionConditionVariable().wait(lock, [workItem]{ return workItem->_completed; });
 }
 }
 
@@ -394,7 +396,8 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 
 		item->_callback = callback;
 		item->_callbackUserData = callbackUserData;
-		item->_completed.store(false, std::memory_order_release);
+		item->_completed = false;
+		item->_context = this;
 	}
 
 	return item;
@@ -615,7 +618,11 @@ void FileContext::processingFunc(FileContext *ctx) {
 				WorkItemFreeBuffer(item);
 				ctx->releaseWorkItem(item);
 			} else {
-				item->_completed.store(true, std::memory_order_release);
+				{
+					std::unique_lock<std::mutex> lock(ctx->getCompletionMutex());
+					item->_completed = true;
+				}
+				ctx->getCompletionConditionVariable().notify_all();
 			}
 		} else {
 			ctx->_workItemQueueSemaphore.wait();

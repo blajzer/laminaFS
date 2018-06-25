@@ -254,6 +254,14 @@ public:
 	//! @return the Allocator
 	Allocator &getAllocator() { return _alloc; }
 
+	//! Gets a mutex guarding the work item completion condition variable.
+	//! @return the mutex
+	std::mutex &getCompletionMutex() { return _completionMutex; }
+
+	//! Gets a condition variable signalled when a work item completes.
+	//! @return the condition variable
+	std::condition_variable &getCompletionConditionVariable() { return _completionConditionVariable; }
+
 	//! Destructively normalizes a path.
 	//! @param path the path to normalize
 	static void normalizePath(char *path);
@@ -290,6 +298,8 @@ private:
 	Allocator _alloc;
 	LogFunc _log = nullptr;
 	std::atomic<bool> _processing;
+	std::mutex _completionMutex;
+	std::condition_variable _completionConditionVariable;
 };
 
 }

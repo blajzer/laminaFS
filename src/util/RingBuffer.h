@@ -43,21 +43,23 @@ public:
 			while (_full)
 				std::this_thread::yield();
 
-			std::lock_guard<std::mutex> lock(_lock);
-			if (!_full) {
-				bool notify = _writePos == _readPos;
-				_buffer[_writePos++] = v;
+			bool notify = false;
+			{
+				std::lock_guard<std::mutex> lock(_lock);
+				if (!_full) {
+					notify = _writePos == _readPos;
+					_buffer[_writePos++] = v;
 
-				if (_writePos == _capacity)
-					_writePos = 0;
+					if (_writePos == _capacity)
+						_writePos = 0;
 
-				if (_writePos == _readPos)
-					_full = true;
-
-				done = true;
-				if (_semaphore && notify)
-					_semaphore->notify();
+					if (_writePos == _readPos)
+						_full = true;
+					done = true;
+				}
 			}
+			if (_semaphore && notify)
+				_semaphore->notify();
 		}
 	}
 

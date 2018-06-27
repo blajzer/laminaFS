@@ -16,8 +16,10 @@ public:
 	~Semaphore() {}
 
 	void notify() {
-		std::unique_lock<std::mutex> lock(_mutex);
-		++_value;
+		{
+			std::unique_lock<std::mutex> lock(_mutex);
+			++_value;
+		}
 		_cond.notify_one();
 	}
 

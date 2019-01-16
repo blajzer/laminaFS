@@ -201,7 +201,7 @@ public:
 	//! @param callback optional callback
 	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *appendFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *appendFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
 
 	//! Determines if a file exists.
 	//! @param filepath the path to the file to delete

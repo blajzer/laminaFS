@@ -147,7 +147,7 @@ LFS_C_API struct lfs_work_item_t *lfs_read_file_segment_ctx_alloc(lfs_context_t 
 //! @param callback optional callback
 //! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Writes a buffer to given offset in a file.
 //! @param ctx the context
@@ -157,7 +157,7 @@ LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *
 //! @param callback optional callback
 //! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Appends a buffer to a file.
 //! @param ctx the context
@@ -167,7 +167,7 @@ LFS_C_API struct lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, cons
 //! @param callback optional callback
 //! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Determines if a file exists.
 //! @param ctx the context

@@ -446,11 +446,11 @@ WorkItem *FileContext::writeFileSegment(const char *filepath, uint64_t offset, c
 	return item;
 }
 
-WorkItem *FileContext::appendFile(const char *filepath, void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
+WorkItem *FileContext::appendFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
 	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND, callback, callbackUserData);
 
 	if (item) {
-		item->_buffer = buffer;
+		item->_buffer = const_cast<void*>(buffer);
 		item->_bufferBytes = bufferBytes;
 
 		_workItemQueue.push(item);

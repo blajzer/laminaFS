@@ -402,19 +402,22 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, uint64_t o
 
 	int file = dev->openFile(filePath, O_WRONLY | O_CREAT | openFlags);
 
-	if (file != -1 && lseek(file, static_cast<off_t>(offset), SEEK_SET) == static_cast<off_t>(offset)) {
-		// XXX: attempt write and retry if necessary
-		ssize_t bytes = -1;
-		do {
-			bytes = write(file, buffer, bytesToWrite);
-		} while(bytes == -1 && errno == EINTR);
+	if (file != -1) {
+		if (lseek(file, static_cast<off_t>(offset), SEEK_SET) == static_cast<off_t>(offset)) {
+			// XXX: attempt write and retry if necessary
+			ssize_t bytes = -1;
+			do {
+				bytes = write(file, buffer, bytesToWrite);
+			} while(bytes == -1 && errno == EINTR);
 
-		if (bytes == -1) {
-			*outError = convertError(errno);
+			if (bytes == -1) {
+				*outError = convertError(errno);
+			} else {
+				bytesWritten = static_cast<uint64_t>(bytes);
+			}
 		} else {
-			bytesWritten = static_cast<uint64_t>(bytes);
+			*outError = convertError(errno);
 		}
-
 		close(file);
 	} else {
 		*outError = convertError(errno);

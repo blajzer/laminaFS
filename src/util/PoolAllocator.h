@@ -53,6 +53,8 @@ public:
 		_alloc.free(_alloc.allocator, _bitmask);
 	}
 
+	uint64_t getCapacity() const { return _capacity; }
+
 	T *alloc() {
 		T *result = nullptr;
 		{

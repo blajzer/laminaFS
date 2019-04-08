@@ -60,17 +60,17 @@ bool operator!=(const AllocatorAdapter<T> &a, const AllocatorAdapter<U> &b) {
 
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem
-//! @return the result code
+//! @return the result code; nullptr is assumed to mean the work item failed allocation
 extern ErrorCode WorkItemGetResult(const WorkItem *workItem);
 
 //! Gets the output buffer from a WorkItem.
 //! @param workItem the WorkItem
-//! @return the output buffer
+//! @return the output buffer, or nullptr if no WorkItem
 extern void *WorkItemGetBuffer(const WorkItem *workItem);
 
 //! Gets the bytes read/written from a WorkItem.
 //! @param workItem the WorkItem
-//! @return the bytes read/written
+//! @return the bytes read/written, or 0 if no WorkItem
 extern uint64_t WorkItemGetBytes(const WorkItem *workItem);
 
 //! Frees the output buffer that was allocated by the work item.
@@ -79,6 +79,7 @@ extern void WorkItemFreeBuffer(WorkItem *workItem);
 
 //! Whether or not a work item has completed processing.
 //! @param workItem the WorkItem to query
+//! @eturn true if finished process (or for nullptr WorkItem), false otherwise
 extern bool WorkItemCompleted(const WorkItem *workItem);
 
 //! Waits for a WorkItem to finish processing.
@@ -281,6 +282,7 @@ private:
 	MountInfo* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
 
 	WorkItem *allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData);
+	void initWorkItem(WorkItem *item, const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData);
 
 	void startProcessingThread();
 	void stopProcessingThread();

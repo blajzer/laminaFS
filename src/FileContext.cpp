@@ -84,16 +84,25 @@ namespace laminaFS {
 Allocator DefaultAllocator = lfs_default_allocator;
 
 ErrorCode WorkItemGetResult(const WorkItem *workItem) {
-	return workItem->_resultCode;
+	if (workItem) {
+		return workItem->_resultCode;
+	} else {
+		// No work item? Probably a failure to allocate.
+		return LFS_OUT_OF_WORK_ITEMS;
+	}
 }
 
 void *WorkItemGetBuffer(const WorkItem *workItem) {
-	std::atomic_thread_fence(std::memory_order_acquire);
-	return workItem->_buffer;
+	if (workItem) {
+		std::atomic_thread_fence(std::memory_order_acquire);
+		return workItem->_buffer;
+	} else {
+		return nullptr;
+	}
 }
 
 void WorkItemFreeBuffer(WorkItem *workItem) {
-	if (workItem->_buffer) {
+	if (workItem && workItem->_buffer) {
 		workItem->_allocator.free(workItem->_allocator.allocator, workItem->_buffer);
 		workItem->_buffer = nullptr;
 		std::atomic_thread_fence(std::memory_order_release);
@@ -101,18 +110,29 @@ void WorkItemFreeBuffer(WorkItem *workItem) {
 }
 
 uint64_t WorkItemGetBytes(const WorkItem *workItem) {
-	return workItem->_bufferBytes;
+	if (workItem) {
+		return workItem->_bufferBytes;
+	} else {
+		return 0;
+	}
 }
 
 bool WorkItemCompleted(const WorkItem *workItem) {
-	std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
-	return workItem->_completed;
+	if (workItem) {
+		std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
+		return workItem->_completed;
+	} else {
+		return true;
+	}
 }
 
 void WaitForWorkItem(const WorkItem *workItem) {
-	std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
-	workItem->_context->getCompletionConditionVariable().wait(lock, [workItem]{ return workItem->_completed; });
+	if (workItem) {
+		std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
+		workItem->_context->getCompletionConditionVariable().wait(lock, [workItem]{ return workItem->_completed; });
+	}
 }
+
 }
 
 FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t workItemPoolSize)
@@ -377,27 +397,47 @@ void FileContext::normalizePath(char *path) {
 }
 
 void FileContext::releaseWorkItem(WorkItem *workItem) {
-	_alloc.free(_alloc.allocator, workItem->_filename);
-	_workItemPool.free(workItem);
+	if (workItem) {
+		_alloc.free(_alloc.allocator, workItem->_filename);
+		_workItemPool.free(workItem);
+	}
+}
+
+void FileContext::initWorkItem(WorkItem *item, const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData) {
+	item->_operation = static_cast<lfs_file_operation_t>(op);
+
+	size_t pathLen = strlen(path) + 1;
+	char *normalizedPath = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * pathLen, alignof(char)));
+	strcpy(normalizedPath, path);
+	normalizePath(normalizedPath);
+
+	item->_filename = normalizedPath;
+
+	item->_callback = callback;
+	item->_callbackUserData = callbackUserData;
+	item->_completed = false;
+	item->_context = this;
 }
 
 WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData) {
 	WorkItem *item = _workItemPool.alloc();
 
 	if (item) {
-		item->_operation = static_cast<lfs_file_operation_t>(op);
+		initWorkItem(item, path, op, callback, callbackUserData);
+	} else {
+		LOG("error: unable to allocate work item, work item pool capacity was %u", static_cast<uint32_t>(_workItemPool.getCapacity()));
 
-		size_t pathLen = strlen(path) + 1;
-		char *normalizedPath = reinterpret_cast<char*>(_alloc.alloc(_alloc.allocator, sizeof(char) * pathLen, alignof(char)));
-		strcpy(normalizedPath, path);
-		normalizePath(normalizedPath);
+		// We'll assume we want a callback with an error here.
+		if (callback) {
+			WorkItem errorItem;
+			initWorkItem(&errorItem, path, op, callback, callbackUserData);
+			errorItem._completed = true;
+			errorItem._resultCode = LFS_OUT_OF_WORK_ITEMS;
 
-		item->_filename = normalizedPath;
+			(void)callback(&errorItem, callbackUserData);
 
-		item->_callback = callback;
-		item->_callbackUserData = callbackUserData;
-		item->_completed = false;
-		item->_context = this;
+			_alloc.free(_alloc.allocator, errorItem._filename);
+		}
 	}
 
 	return item;

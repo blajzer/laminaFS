@@ -35,7 +35,8 @@ enum lfs_error_code_t {
 	LFS_ALREADY_EXISTS,
 	LFS_PERMISSIONS_ERROR,
 	LFS_OUT_OF_SPACE,
-	LFS_INVALID_DEVICE
+	LFS_INVALID_DEVICE,
+	LFS_OUT_OF_WORK_ITEMS
 };
 
 enum lfs_write_mode_t {

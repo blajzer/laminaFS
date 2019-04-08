@@ -5,6 +5,8 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
+#include <shared_mutex>
 #include <vector>
 #include <thread>
 
@@ -290,6 +292,7 @@ private:
 
 	std::vector<DeviceInterface*, AllocatorAdapter<DeviceInterface*>> _interfaces;
 	std::vector<MountInfo*, AllocatorAdapter<MountInfo*>> _mounts;
+	std::shared_mutex _mountLock;
 
 	util::PoolAllocator<WorkItem> _workItemPool;
 	util::Semaphore _workItemQueueSemaphore;

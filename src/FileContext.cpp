@@ -165,6 +165,7 @@ FileContext::FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems, uint64_t
 FileContext::~FileContext() {
 	stopProcessingThread();
 
+	_mountLock.lock();
 	for (MountInfo *m : _mounts) {
 		_alloc.free(_alloc.allocator, m->_prefix);
 		m->_interface->_destroy(m->_device);
@@ -172,6 +173,7 @@ FileContext::~FileContext() {
 		m->~MountInfo();
 		_alloc.free(_alloc.allocator, m);
 	}
+	_mountLock.unlock();
 
 	for (DeviceInterface *i : _interfaces) {
 		i->~DeviceInterface();
@@ -245,7 +247,9 @@ Mount FileContext::createMount(uint32_t deviceType, const char *mountPoint, cons
 		strcpy(m->_prefix, mountPoint);
 		m->_permissions = calculatedPermissions;
 
+		_mountLock.lock();
 		_mounts.push_back(m);
+		_mountLock.unlock();
 		LOG("mounted device %u:%s on %s\n", deviceType, devicePath, mountPoint);
 	} else {
 		m->~MountInfo();
@@ -262,6 +266,7 @@ bool FileContext::releaseMount(Mount mount) {
 	bool result = false;
 	stopProcessingThread();
 
+	_mountLock.lock();
 	auto it = std::find(_mounts.begin(), _mounts.end(), mount);
 	if (it != _mounts.end()) {
 		(*it)->_interface->_destroy((*it)->_device);
@@ -273,6 +278,7 @@ bool FileContext::releaseMount(Mount mount) {
 		_mounts.erase(it);
 		result = true;
 	}
+	_mountLock.unlock();
 
 	startProcessingThread();
 	return result;
@@ -282,6 +288,8 @@ FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const ch
 	LOG("searching for file %s\n", path);
 
 	*devicePath = nullptr;
+
+	std::shared_lock lock(_mountLock);
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {
@@ -312,6 +320,8 @@ FileContext::MountInfo* FileContext::findMutableMountAndPath(const char *path, c
 	LOG("searching for writable mount for %s\n", path);
 
 	*devicePath = nullptr;
+
+	std::shared_lock lock(_mountLock);
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {

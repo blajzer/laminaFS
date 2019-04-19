@@ -15,7 +15,9 @@
 #ifdef _WIN32
 #define UNICODE 1
 #define _UNICODE 1
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <shellapi.h>
 #else
@@ -216,10 +218,10 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *
 #ifdef _WIN32
 	HANDLE file = dev->openFile(filePath, GENERIC_READ, OPEN_EXISTING);
 
-	if (file) {
+	if (file != INVALID_HANDLE_VALUE) {
 		LARGE_INTEGER result;
-		if(!GetFileSizeEx(file, &result)) {
-			printf("error code %lu\n", GetLastError());
+		if (!GetFileSizeEx(file, &result)) {
+			*outError = convertError(GetLastError());
 		} else {
 			size = result.QuadPart;
 		}
@@ -251,30 +253,33 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, uint64_t of
 #ifdef _WIN32
 	HANDLE file = dir->openFile(filePath, GENERIC_READ, OPEN_EXISTING);
 
-	if (file) {
+	if (file != INVALID_HANDLE_VALUE) {
 		LARGE_INTEGER result;
-		GetFileSizeEx(file, &result);
-		size_t fileSize = result.QuadPart;
+		if (GetFileSizeEx(file, &result)) {
+			size_t fileSize = result.QuadPart;
 
-		if (fileSize) {
-			LARGE_INTEGER offsetStruct;
-			offsetStruct.QuadPart = offset;
-			if (SetFilePointer(file, offsetStruct.LowPart, &offsetStruct.HighPart, FILE_BEGIN) == INVALID_SET_FILE_POINTER){
-				CloseHandle(file);
-				return bytesRead;
+			if (fileSize) {
+				LARGE_INTEGER offsetStruct;
+				offsetStruct.QuadPart = offset;
+				if (SetFilePointer(file, offsetStruct.LowPart, &offsetStruct.HighPart, FILE_BEGIN) == INVALID_SET_FILE_POINTER){
+					CloseHandle(file);
+					return bytesRead;
+				}
+
+				fileSize = std::min(fileSize - offset, maxBytes);
+				*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
+
+				DWORD bytesReadTemp = 0;
+				if (!ReadFile(file, *buffer, static_cast<DWORD>(fileSize), &bytesReadTemp, nullptr)) {
+					*outError = convertError(GetLastError());
+				} else if (nullTerminate) {
+					(*reinterpret_cast<char**>(buffer))[bytesReadTemp] = 0;
+				}
+
+				bytesRead = bytesReadTemp;
 			}
-
-			fileSize = std::min(fileSize - offset, maxBytes);
-			*buffer = alloc->alloc(alloc->allocator, fileSize + (nullTerminate ? 1 : 0), 1);
-
-			DWORD bytesReadTemp = 0;
-			if (!ReadFile(file, *buffer, static_cast<DWORD>(fileSize), &bytesReadTemp, nullptr)) {
-				*outError = convertError(GetLastError());
-			} else if (nullTerminate) {
-				(*reinterpret_cast<char**>(buffer))[bytesReadTemp] = 0;
-			}
-
-			bytesRead = bytesReadTemp;
+		} else {
+			*outError = convertError(GetLastError());
 		}
 
 		CloseHandle(file);
@@ -354,7 +359,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, uint64_t o
 
 	HANDLE file = dev->openFile(filePath, GENERIC_WRITE, createFlags);
 
-	if (file) {
+	if (file != INVALID_HANDLE_VALUE) {
 		if (writeMode == LFS_WRITE_APPEND) {
 			LARGE_INTEGER offsetStruct;
 			offsetStruct.QuadPart = 0;

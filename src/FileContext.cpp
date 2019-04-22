@@ -289,7 +289,7 @@ FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const ch
 
 	*devicePath = nullptr;
 
-	std::shared_lock lock(_mountLock);
+	std::shared_lock<std::shared_mutex> lock(_mountLock);
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {
@@ -321,7 +321,7 @@ FileContext::MountInfo* FileContext::findMutableMountAndPath(const char *path, c
 
 	*devicePath = nullptr;
 
-	std::shared_lock lock(_mountLock);
+	std::shared_lock<std::shared_mutex> lock(_mountLock);
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {

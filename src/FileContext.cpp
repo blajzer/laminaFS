@@ -664,16 +664,17 @@ void FileContext::processingFunc(FileContext *ctx) {
 				callbackResult = item->_callback(item, item->_callbackUserData);
 			}
 
+			{
+				std::unique_lock<std::mutex> lock(ctx->getCompletionMutex());
+				item->_completed = true;
+			}
+
 			if (callbackResult == LFS_FREE_WORK_ITEM) {
 				ctx->releaseWorkItem(item);
 			} else if (callbackResult == LFS_FREE_WORK_ITEM_AND_BUFFER) {
 				WorkItemFreeBuffer(item);
 				ctx->releaseWorkItem(item);
 			} else {
-				{
-					std::unique_lock<std::mutex> lock(ctx->getCompletionMutex());
-					item->_completed = true;
-				}
 				ctx->getCompletionConditionVariable().notify_all();
 			}
 		} else {

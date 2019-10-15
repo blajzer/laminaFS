@@ -129,7 +129,9 @@ bool WorkItemCompleted(const WorkItem *workItem) {
 void WaitForWorkItem(const WorkItem *workItem) {
 	if (workItem) {
 		std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
-		workItem->_context->getCompletionConditionVariable().wait(lock, [workItem]{ return workItem->_completed; });
+		while (!workItem->_completed) {
+			workItem->_context->getCompletionConditionVariable().wait(lock, [workItem]{ return workItem->_completed; });
+		}
 	}
 }
 

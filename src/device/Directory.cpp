@@ -223,6 +223,7 @@ size_t DirectoryDevice::fileSize(void *device, const char *filePath, ErrorCode *
 		if (!GetFileSizeEx(file, &result)) {
 			*outError = convertError(GetLastError());
 		} else {
+			*outError = LFS_OK;
 			size = result.QuadPart;
 		}
 		CloseHandle(file);
@@ -277,6 +278,12 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, uint64_t of
 				}
 
 				bytesRead = bytesReadTemp;
+				*outError = LFS_OK;
+			} else {
+				// Zero-byte file.
+				*buffer = nullptr;
+				bytesRead = 0;
+				*outError = LFS_OK;
 			}
 		} else {
 			*outError = convertError(GetLastError());
@@ -321,10 +328,16 @@ size_t DirectoryDevice::readFile(void *device, const char *filePath, uint64_t of
 					}
 
 					bytesRead = static_cast<uint64_t>(bytes);
+					*outError = LFS_OK;
 
 					if (nullTerminate) {
 						(*reinterpret_cast<char**>(buffer))[bytesRead] = 0;
 					}
+				} else {
+					// Zero-byte file.
+					*buffer = nullptr;
+					bytesRead = 0;
+					*outError = LFS_OK;
 				}
 			} else {
 				*outError = convertError(errno);
@@ -385,6 +398,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, uint64_t o
 				*outError = LFS_GENERIC_ERROR;
 		} else {
 			bytesWritten = temp;
+			*outError = LFS_OK;
 		}
 	} else {
 		*outError = convertError(GetLastError());
@@ -419,6 +433,7 @@ size_t DirectoryDevice::writeFile(void *device, const char *filePath, uint64_t o
 				*outError = convertError(errno);
 			} else {
 				bytesWritten = static_cast<uint64_t>(bytes);
+				*outError = LFS_OK;
 			}
 		} else {
 			*outError = convertError(errno);

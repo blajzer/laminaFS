@@ -280,7 +280,7 @@ private:
 		uint32_t _permissions;
 	};
 
-	MountInfo* findMountAndPath(const char *path, const char **devicePath);
+	MountInfo* findNextMountAndPath(const char *path, const char **devicePath, const MountInfo* searchStart);
 	MountInfo* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
 
 	WorkItem *allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData);

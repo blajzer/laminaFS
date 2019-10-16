@@ -286,35 +286,28 @@ bool FileContext::releaseMount(Mount mount) {
 	return result;
 }
 
-FileContext::MountInfo* FileContext::findMountAndPath(const char *path, const char **devicePath) {
-	LOG("searching for file %s\n", path);
-
+FileContext::MountInfo* FileContext::findNextMountAndPath(const char *path, const char **devicePath, const MountInfo* searchStart) {
 	*devicePath = nullptr;
-
-	std::shared_lock<std::shared_mutex> lock(_mountLock);
+	const MountInfo* onlyAfter = searchStart;
 
 	// search mounts from the end
 	for (auto mount = _mounts.rbegin(); mount != _mounts.rend(); ++mount) {
 		if (((*mount)->_permissions & LFS_MOUNT_READ) == 0)
 			continue;
+		if (onlyAfter) {
+			if (*mount == onlyAfter)
+				onlyAfter = nullptr;
+			continue;
+		}
 
 		const char *foundMount = strstr(path, (*mount)->_prefix);
 		if (foundMount && foundMount == path && (path[(*mount)->_prefixLen] == '/' || (*mount)->_prefixLen == 1)) {
-			LOG("  found matching mount %s\n", (*mount)->_prefix);
-
 			*devicePath = (*mount)->_prefixLen == 1 ? path : path + (*mount)->_prefixLen;
-			bool exists = (*mount)->_interface->_fileExists((*mount)->_device, *devicePath);
-
-			if (!exists) {
-				*devicePath = nullptr;
-				continue;
-			} else {
-				return *mount;
-				break;
-			}
+			return *mount;
 		}
 	}
 
+	*devicePath = nullptr;
 	return nullptr;
 }
 
@@ -569,29 +562,43 @@ void FileContext::processingFunc(FileContext *ctx) {
 			case LFS_OP_EXISTS:
 			{
 				const char *devicePath;
-				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
-				item->_resultCode = mount ? LFS_OK : LFS_NOT_FOUND;
+				MountInfo *mount = nullptr;
+				item->_resultCode = LFS_NOT_FOUND;
+				while ((mount = ctx->findNextMountAndPath(item->_filename, &devicePath, mount)) != nullptr) {
+					bool exists = mount->_interface->_fileExists(mount->_device, devicePath);
+					if (exists) {
+						item->_resultCode = LFS_OK;
+						break;
+					}
+				}
 				break;
 			}
 			case LFS_OP_SIZE:
 			{
 				const char *devicePath;
-				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
-				if (mount) {
+				MountInfo *mount = nullptr;
+				item->_resultCode = LFS_NOT_FOUND;
+				item->_bufferBytes = 0;
+				while ((mount = ctx->findNextMountAndPath(item->_filename, &devicePath, mount)) != nullptr) {
 					item->_bufferBytes = mount->_interface->_fileSize(mount->_device, devicePath, &item->_resultCode);
-				} else {
-					item->_resultCode = LFS_NOT_FOUND;
+					if (item->_resultCode != LFS_NOT_FOUND) {
+						break;
+					}
 				}
 				break;
 			}
 			case LFS_OP_READ:
 			{
 				const char *devicePath;
-				MountInfo *mount = ctx->findMountAndPath(item->_filename, &devicePath);
-				if (mount) {
-					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, item->_offset, item->_bufferBytes, &item->_allocator, &item->_buffer, item->_nullTerminate, &item->_resultCode);
-				} else {
-					item->_resultCode = LFS_NOT_FOUND;
+				MountInfo *mount = nullptr;
+				item->_resultCode = LFS_NOT_FOUND;
+				size_t maxBytes = item->_bufferBytes;
+				item->_bufferBytes = 0;
+				while ((mount = ctx->findNextMountAndPath(item->_filename, &devicePath, mount)) != nullptr) {
+					item->_bufferBytes = mount->_interface->_readFile(mount->_device, devicePath, item->_offset, maxBytes, &item->_allocator, &item->_buffer, item->_nullTerminate, &item->_resultCode);
+					if (item->_resultCode != LFS_NOT_FOUND) {
+						break;
+					}
 				}
 				break;
 			}

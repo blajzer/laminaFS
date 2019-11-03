@@ -49,6 +49,8 @@ struct lfs_work_item_t {
 	uint64_t _bufferBytes = 0;
 	uint64_t _offset = 0;
 
+	lfs_callback_buffer_action_t _callbackBufferAction;
+
 	lfs_error_code_t _resultCode = LFS_OK;
 	bool _nullTerminate = false;
 	bool _completed = false;
@@ -118,7 +120,7 @@ uint64_t WorkItemGetBytes(const WorkItem *workItem) {
 }
 
 bool WorkItemCompleted(const WorkItem *workItem) {
-	if (workItem) {
+	if (workItem && !workItem->_callback) {
 		std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
 		return workItem->_completed;
 	} else {
@@ -127,7 +129,7 @@ bool WorkItemCompleted(const WorkItem *workItem) {
 }
 
 void WaitForWorkItem(const WorkItem *workItem) {
-	if (workItem) {
+	if (workItem && !workItem->_callback) {
 		std::unique_lock<std::mutex> lock(workItem->_context->getCompletionMutex());
 		while (!workItem->_completed) {
 			workItem->_context->getCompletionConditionVariable().wait(lock, [workItem]{ return workItem->_completed; });
@@ -402,13 +404,19 @@ void FileContext::normalizePath(char *path) {
 }
 
 void FileContext::releaseWorkItem(WorkItem *workItem) {
+	if (workItem && !workItem->_callback) {
+		releaseWorkItemInternal(workItem);
+	}
+}
+
+void FileContext::releaseWorkItemInternal(WorkItem *workItem) {
 	if (workItem) {
 		_alloc.free(_alloc.allocator, workItem->_filename);
 		_workItemPool.free(workItem);
 	}
 }
 
-void FileContext::initWorkItem(WorkItem *item, const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData) {
+void FileContext::initWorkItem(WorkItem *item, const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData, CallbackBufferAction bufferAction) {
 	item->_operation = static_cast<lfs_file_operation_t>(op);
 
 	size_t pathLen = strlen(path) + 1;
@@ -420,26 +428,27 @@ void FileContext::initWorkItem(WorkItem *item, const char *path, uint32_t op, Wo
 
 	item->_callback = callback;
 	item->_callbackUserData = callbackUserData;
+	item->_callbackBufferAction = bufferAction;
 	item->_completed = false;
 	item->_context = this;
 }
 
-WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData) {
+WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData, CallbackBufferAction bufferAction) {
 	WorkItem *item = _workItemPool.alloc();
 
 	if (item) {
-		initWorkItem(item, path, op, callback, callbackUserData);
+		initWorkItem(item, path, op, callback, callbackUserData, bufferAction);
 	} else {
 		LOG("error: unable to allocate work item, work item pool capacity was %u", static_cast<uint32_t>(_workItemPool.getCapacity()));
 
 		// We'll assume we want a callback with an error here.
 		if (callback) {
 			WorkItem errorItem;
-			initWorkItem(&errorItem, path, op, callback, callbackUserData);
+			initWorkItem(&errorItem, path, op, callback, callbackUserData, bufferAction);
 			errorItem._completed = true;
 			errorItem._resultCode = LFS_OUT_OF_WORK_ITEMS;
 
-			(void)callback(&errorItem, callbackUserData);
+			callback(&errorItem, callbackUserData);
 
 			_alloc.free(_alloc.allocator, errorItem._filename);
 		}
@@ -448,12 +457,12 @@ WorkItem *FileContext::allocWorkItemCommon(const char *path, uint32_t op, WorkIt
 	return item;
 }
 
-WorkItem *FileContext::readFile(const char *filepath, bool nullTerminate, Allocator *alloc, WorkItemCallback callback, void *callbackUserData) {
-	return readFileSegment(filepath, 0, static_cast<uint64_t>(-1), nullTerminate, alloc, callback, callbackUserData);
+WorkItem *FileContext::readFile(const char *filepath, bool nullTerminate, Allocator *alloc) {
+	return readFileSegment(filepath, 0, static_cast<uint64_t>(-1), nullTerminate, alloc);
 }
 
-WorkItem *FileContext::readFileSegment(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, Allocator *alloc, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ, callback, callbackUserData);
+WorkItem *FileContext::readFileSegment(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, Allocator *alloc) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		item->_allocator = alloc ? *alloc : _alloc;
@@ -467,8 +476,25 @@ WorkItem *FileContext::readFileSegment(const char *filepath, uint64_t offset, ui
 	return item;
 }
 
-WorkItem *FileContext::writeFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = writeFileSegment(filepath, 0, buffer, bufferBytes, callback, callbackUserData);
+void FileContext::readFileWithCallback(const char *filepath, bool nullTerminate, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData, Allocator *alloc) {
+	readFileSegmentWithCallback(filepath, 0, static_cast<uint64_t>(-1), nullTerminate, callback, bufferAction, callbackUserData, alloc);
+}
+
+void FileContext::readFileSegmentWithCallback(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData, Allocator *alloc) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_READ, callback, callbackUserData, bufferAction);
+
+	if (item) {
+		item->_allocator = alloc ? *alloc : _alloc;
+		item->_nullTerminate = nullTerminate;
+		item->_bufferBytes = maxBytes;
+		item->_offset = offset;
+
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::writeFile(const char *filepath, const void *buffer, uint64_t bufferBytes) {
+	WorkItem *item = writeFileSegment(filepath, 0, buffer, bufferBytes);
 
 	if (item) {
 		item->_operation = LFS_OP_WRITE;
@@ -477,8 +503,8 @@ WorkItem *FileContext::writeFile(const char *filepath, const void *buffer, uint6
 	return item;
 }
 
-WorkItem *FileContext::writeFileSegment(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE_SEGMENT, callback, callbackUserData);
+WorkItem *FileContext::writeFileSegment(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE_SEGMENT, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		item->_buffer = const_cast<void*>(buffer);
@@ -491,8 +517,32 @@ WorkItem *FileContext::writeFileSegment(const char *filepath, uint64_t offset, c
 	return item;
 }
 
-WorkItem *FileContext::appendFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND, callback, callbackUserData);
+void FileContext::writeFileWithCallback(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE, callback, callbackUserData, bufferAction);
+
+	if (item) {
+		item->_buffer = const_cast<void*>(buffer);
+		item->_bufferBytes = bufferBytes;
+		item->_offset = 0;
+
+		_workItemQueue.push(item);
+	}
+}
+
+void FileContext::writeFileSegmentWithCallback(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_WRITE_SEGMENT, callback, callbackUserData, bufferAction);
+
+	if (item) {
+		item->_buffer = const_cast<void*>(buffer);
+		item->_bufferBytes = bufferBytes;
+		item->_offset = offset;
+
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::appendFile(const char *filepath, const void *buffer, uint64_t bufferBytes) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		item->_buffer = const_cast<void*>(buffer);
@@ -504,8 +554,19 @@ WorkItem *FileContext::appendFile(const char *filepath, const void *buffer, uint
 	return item;
 }
 
-WorkItem *FileContext::fileExists(const char *filepath, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_EXISTS, callback, callbackUserData);
+void FileContext::appendFileWithCallback(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_APPEND, callback, callbackUserData, bufferAction);
+
+	if (item) {
+		item->_buffer = const_cast<void*>(buffer);
+		item->_bufferBytes = bufferBytes;
+
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::fileExists(const char *filepath) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_EXISTS, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -514,8 +575,16 @@ WorkItem *FileContext::fileExists(const char *filepath, WorkItemCallback callbac
 	return item;
 }
 
-WorkItem *FileContext::fileSize(const char *filepath, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_SIZE, callback, callbackUserData);
+void FileContext::fileExistsWithCallback(const char *filepath, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_EXISTS, callback, callbackUserData, LFS_DO_NOT_FREE_BUFFER);
+
+	if (item) {
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::fileSize(const char *filepath) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_SIZE, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -524,8 +593,16 @@ WorkItem *FileContext::fileSize(const char *filepath, WorkItemCallback callback,
 	return item;
 }
 
-WorkItem *FileContext::deleteFile(const char *filepath, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_DELETE, callback, callbackUserData);
+void FileContext::fileSizeWithCallback(const char *filepath, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_SIZE, callback, callbackUserData, LFS_DO_NOT_FREE_BUFFER);
+
+	if (item) {
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::deleteFile(const char *filepath) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_DELETE, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -534,8 +611,16 @@ WorkItem *FileContext::deleteFile(const char *filepath, WorkItemCallback callbac
 	return item;
 }
 
-WorkItem *FileContext::createDir(const char *path, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR, callback, callbackUserData);
+void FileContext::deleteFileWithCallback(const char *filepath, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(filepath, LFS_OP_DELETE, callback, callbackUserData, LFS_DO_NOT_FREE_BUFFER);
+
+	if (item) {
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::createDir(const char *path) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		_workItemQueue.push(item);
@@ -544,14 +629,30 @@ WorkItem *FileContext::createDir(const char *path, WorkItemCallback callback, vo
 	return item;
 }
 
-WorkItem *FileContext::deleteDir(const char *path, WorkItemCallback callback, void *callbackUserData) {
-	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR, callback, callbackUserData);
+void FileContext::createDirWithCallback(const char *path, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_CREATE_DIR, callback, callbackUserData, LFS_DO_NOT_FREE_BUFFER);
+
+	if (item) {
+		_workItemQueue.push(item);
+	}
+}
+
+WorkItem *FileContext::deleteDir(const char *path) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR, nullptr, nullptr, LFS_DO_NOT_FREE_BUFFER);
 
 	if (item) {
 		_workItemQueue.push(item);
 	}
 
 	return item;
+}
+
+void FileContext::deleteDirWithCallback(const char *path, WorkItemCallback callback, void *callbackUserData) {
+	WorkItem *item = allocWorkItemCommon(path, LFS_OP_DELETE_DIR, callback, callbackUserData, LFS_DO_NOT_FREE_BUFFER);
+
+	if (item) {
+		_workItemQueue.push(item);
+	}
 }
 
 void FileContext::processingFunc(FileContext *ctx) {
@@ -666,24 +767,23 @@ void FileContext::processingFunc(FileContext *ctx) {
 			}
 			};
 
-			lfs_callback_result_t callbackResult = LFS_DO_NOTHING;
-			if (item->_callback) {
-				callbackResult = item->_callback(item, item->_callbackUserData);
-			}
-
 			{
 				std::unique_lock<std::mutex> lock(ctx->getCompletionMutex());
 				item->_completed = true;
 			}
 
-			if (callbackResult == LFS_FREE_WORK_ITEM) {
-				ctx->releaseWorkItem(item);
-			} else if (callbackResult == LFS_FREE_WORK_ITEM_AND_BUFFER) {
-				WorkItemFreeBuffer(item);
-				ctx->releaseWorkItem(item);
+			if (item->_callback) {
+				item->_callback(item, item->_callbackUserData);
+
+				if (item->_callbackBufferAction == LFS_FREE_BUFFER) {
+					WorkItemFreeBuffer(item);
+				}
+
+				ctx->releaseWorkItemInternal(item);
 			} else {
 				ctx->getCompletionConditionVariable().notify_all();
 			}
+
 		} else {
 			ctx->_workItemQueueSemaphore.wait();
 		}

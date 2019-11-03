@@ -102,19 +102,34 @@ LFS_C_API bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount);
 //! @param filepath the path to the file to read
 //! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
 //! @param alloc the allocator to use.
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, bool nullTerminate, struct lfs_allocator_t *alloc);
+
+//! Reads the entirety of a file.
+//! @param ctx the context
+//! @param filepath the path to the file to read
+//! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
+//! @param alloc the allocator to use.
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_read_file_with_callback(lfs_context_t ctx, const char *filepath, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Reads the entirety of a file and uses the context's allocator.
 //! @param ctx the context
 //! @param filepath the path to the file to read
 //! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, bool nullTerminate);
+
+//! Reads the entirety of a file and uses the context's allocator.
+//! @param ctx the context
+//! @param filepath the path to the file to read
+//! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_read_file_ctx_alloc_with_callback(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Reads a portion of a file.
 //! @param ctx the context
@@ -123,10 +138,20 @@ LFS_C_API struct lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, con
 //! @param maxBytes the maximum number of bytes to read
 //! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
 //! @param alloc the allocator to use.
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_read_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_read_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc);
+
+//! Reads a portion of a file.
+//! @param ctx the context
+//! @param filepath the path to the file to read
+//! @param offset the offset to start reading from
+//! @param maxBytes the maximum number of bytes to read
+//! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
+//! @param alloc the allocator to use.
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_read_file_segment_with_callback(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Reads a portion of a file and uses the context's allocator.
 //! @param ctx the context
@@ -134,20 +159,37 @@ LFS_C_API struct lfs_work_item_t *lfs_read_file_segment(lfs_context_t ctx, const
 //! @param offset the offset to start reading from
 //! @param maxBytes the maximum number of bytes to read
 //! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_read_file_segment_ctx_alloc(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_read_file_segment_ctx_alloc(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate);
+
+//! Reads a portion of a file and uses the context's allocator.
+//! @param ctx the context
+//! @param filepath the path to the file to read
+//! @param offset the offset to start reading from
+//! @param maxBytes the maximum number of bytes to read
+//! @param nullTerminate whether or not to null-terminate the input so it can be directly used as a C-string
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_read_file_segment_ctx_alloc_with_callback(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Writes a buffer to a file.
 //! @param ctx the context
 //! @param filepath the path to the file to write
 //! @param buffer the buffer to write
 //! @param bufferBytes the number of bytes to write to the buffer
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes);
+
+//! Writes a buffer to a file.
+//! @param ctx the context
+//! @param filepath the path to the file to write
+//! @param buffer the buffer to write
+//! @param bufferBytes the number of bytes to write to the buffer
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_write_file_with_callback(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Writes a buffer to given offset in a file.
 //! @param ctx the context
@@ -157,57 +199,100 @@ LFS_C_API struct lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *
 //! @param callback optional callback
 //! @param callbackUserData optional user data pointer for callback
 //! @return a lfs_work_item_t representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes);
+
+//! Writes a buffer to given offset in a file.
+//! @param ctx the context
+//! @param filepath the path to the file to write
+//! @param buffer the buffer to write
+//! @param bufferBytes the number of bytes to write to the buffer
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_write_file_segment_with_callback(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Appends a buffer to a file.
 //! @param ctx the context
 //! @param filepath the path to the file to append
 //! @param buffer the buffer to write
 //! @param bufferBytes the number of bytes to write to the buffer
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes);
+
+//! Appends a buffer to a file.
+//! @param ctx the context
+//! @param filepath the path to the file to append
+//! @param buffer the buffer to write
+//! @param bufferBytes the number of bytes to write to the buffer
+//! @param callback callback
+//! @param bufferAction what to do with the buffer after the callback completes execution
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_append_file_with_callback(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, enum lfs_callback_buffer_action_t bufferAction, void *callbackUserData);
 
 //! Determines if a file exists.
 //! @param ctx the context
 //! @param filepath the path to the file to delete
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath);
+
+//! Determines if a file exists.
+//! @param ctx the context
+//! @param filepath the path to the file to delete
+//! @param callback callback
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_file_exists_with_callback(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Gets the size of a file.
 //! @param ctx the context
 //! @param filepath the path to the file to delete
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath);
+
+//! Gets the size of a file.
+//! @param ctx the context
+//! @param filepath the path to the file to delete
+//! @param callback callback
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_file_size_with_callback(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Deletes a file.
 //! @param ctx the context
 //! @param filepath the path to the file to delete
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath);
+
+//! Deletes a file.
+//! @param ctx the context
+//! @param filepath the path to the file to delete
+//! @param callback callback
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_delete_file_with_callback(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Creates a directory.
 //! @param ctx the context
 //! @param path the path to the directory to create
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path);
+
+//! Creates a directory.
+//! @param ctx the context
+//! @param path the path to the directory to create
+//! @param callback callback
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_create_dir_with_callback(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Deletes a directory and all contained files/directories.
 //! @param ctx the context
 //! @param path the path to the file to delete
-//! @param callback optional callback
-//! @param callbackUserData optional user data pointer for callback
 //! @return a WorkItem representing the work to be done
-LFS_C_API struct lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData);
+LFS_C_API struct lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path);
+
+//! Deletes a directory and all contained files/directories.
+//! @param ctx the context
+//! @param path the path to the file to delete
+//! @param callback callback
+//! @param callbackUserData optional user data pointer for callback
+LFS_C_API void lfs_delete_dir_with_callback(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData);
 
 //! Gets the result code from a WorkItem
 //! @param workItem the WorkItem

@@ -22,7 +22,7 @@ typedef lfs_error_code_t ErrorCode;
 typedef lfs_work_item_t WorkItem;
 typedef lfs_allocator_t Allocator;
 typedef lfs_work_item_callback_t WorkItemCallback;
-typedef lfs_callback_result_t CallbackResult;
+typedef lfs_callback_buffer_action_t CallbackBufferAction;
 typedef void* Mount;
 
 extern Allocator DefaultAllocator;
@@ -95,11 +95,10 @@ extern void WaitForWorkItem(const WorkItem *workItem);
 //!
 //! There are two methods of work item ownership:
 //! 1. No callback is provided. In this case the client thread is responsible for calling FileContext::releaseWorkItem().
-//! 2. Callback is provided. The callback can request that the procesing thread free the work item, or have client code
-//!    free it sometime *after* the callback completes.
+//!    The work item must be complete before FileContext::releaseWorkItem() can be called. Use WaitForWorkItem() to ensure completion.
+//! 2. Callback is provided. The caller pre-requests that the procesing thread free any internal buffer, or have client code
+//!    free it sometime later. The processing thread owns and will free the work item.
 //!
-//! In either case, the work item must be complete before FileContext::releaseWorkItem() can be called.
-//! Use WaitForWorkItem() to ensure completion.
 class FileContext {
 public:
 	FileContext(Allocator &alloc, uint64_t maxQueuedWorkItems = 128, uint64_t workItemPoolSize = 1024);
@@ -162,10 +161,17 @@ public:
 	//! @param filepath the path to the file to read
 	//! @param nullTerminate whether or not to add a NULL to the end of the buffer so it can be directly used as a C-string.
 	//! @param alloc the allocator to use. If NULL will use the context's allocator.
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *readFile(const char *filepath, bool nullTerminate, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *readFile(const char *filepath, bool nullTerminate, Allocator *alloc = nullptr);
+
+	//! Reads the entirety of a file.
+	//! @param filepath the path to the file to read
+	//! @param nullTerminate whether or not to add a NULL to the end of the buffer so it can be directly used as a C-string.
+	//! @param callback callback
+	//! @param bufferAction what to do with the buffer after the callback completes execution
+	//! @param callbackUserData user data pointer for callback
+	//! @param alloc the allocator to use. If NULL will use the context's allocator.
+	void readFileWithCallback(const char *filepath, bool nullTerminate, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData = nullptr, Allocator *alloc = nullptr);
 
 	//! Reads a portion of a file.
 	//! @param filepath the path to the file to read
@@ -173,73 +179,124 @@ public:
 	//! @param maxBytes the maximum number of bytes to read
 	//! @param nullTerminate whether or not to add a NULL to the end of the buffer so it can be directly used as a C-string.
 	//! @param alloc the allocator to use. If NULL will use the context's allocator.
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *readFileSegment(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, Allocator *alloc = nullptr, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *readFileSegment(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, Allocator *alloc = nullptr);
+
+	//! Reads a portion of a file.
+	//! @param filepath the path to the file to read
+	//! @param offset the offset to start reading from
+	//! @param maxBytes the maximum number of bytes to read
+	//! @param nullTerminate whether or not to add a NULL to the end of the buffer so it can be directly used as a C-string.
+	//! @param callback callback
+	//! @param bufferAction what to do with the buffer after the callback completes execution
+	//! @param callbackUserData optional user data pointer for callback
+	//! @param alloc the allocator to use. If NULL will use the context's allocator.
+	void readFileSegmentWithCallback(const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData = nullptr, Allocator *alloc = nullptr);
 
 	//! Writes a buffer to a file.
 	//! @param filepath the path to the file to write
 	//! @param buffer the buffer to write
 	//! @param bufferBytes the number of bytes to write to the buffer
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *writeFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *writeFile(const char *filepath, const void *buffer, uint64_t bufferBytes);
+
+	//! Writes a buffer to a file.
+	//! @param filepath the path to the file to write
+	//! @param buffer the buffer to write
+	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @param callback callback
+	//! @param bufferAction what to do with the buffer after the callback completes execution
+	//! @param callbackUserData optional user data pointer for callback
+	void writeFileWithCallback(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData = nullptr);
 
 	//! Writes a buffer to a given offset in a file.
 	//! @param filepath the path to the file to write
 	//! @param offset the offset to write to
 	//! @param buffer the buffer to write
 	//! @param bufferBytes the number of bytes to write to the buffer
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *writeFileSegment(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *writeFileSegment(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes);
+
+	//! Writes a buffer to a given offset in a file.
+	//! @param filepath the path to the file to write
+	//! @param offset the offset to write to
+	//! @param buffer the buffer to write
+	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @param callback callback
+	//! @param bufferAction what to do with the buffer after the callback completes execution
+	//! @param callbackUserData optional user data pointer for callback
+	void writeFileSegmentWithCallback(const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData = nullptr);
 
 	//! Appends a buffer to a file.
 	//! @param filepath the path to the file to append
 	//! @param buffer the buffer to write
 	//! @param bufferBytes the number of bytes to write to the buffer
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *appendFile(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *appendFile(const char *filepath, const void *buffer, uint64_t bufferBytes);
+
+	//! Appends a buffer to a file.
+	//! @param filepath the path to the file to append
+	//! @param buffer the buffer to write
+	//! @param bufferBytes the number of bytes to write to the buffer
+	//! @param callback callback
+	//! @param bufferAction what to do with the buffer after the callback completes execution
+	//! @param callbackUserData optional user data pointer for callback
+	void appendFileWithCallback(const char *filepath, const void *buffer, uint64_t bufferBytes, WorkItemCallback callback, CallbackBufferAction bufferAction, void *callbackUserData = nullptr);
 
 	//! Determines if a file exists.
 	//! @param filepath the path to the file to delete
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *fileExists(const char *filepath, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *fileExists(const char *filepath);
+
+	//! Determines if a file exists.
+	//! @param filepath the path to the file to delete
+	//! @param callback callback
+	//! @param callbackUserData optional user data pointer for callback
+	void fileExistsWithCallback(const char *filepath, WorkItemCallback callback, void *callbackUserData = nullptr);
 
 	//! Gets the size of a file.
 	//! @param filepath the path to the file to delete
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *fileSize(const char *filepath, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *fileSize(const char *filepath);
+
+	//! Gets the size of a file.
+	//! @param filepath the path to the file to delete
+	//! @param callback callback
+	//! @param callbackUserData optional user data pointer for callback
+	void fileSizeWithCallback(const char *filepath, WorkItemCallback callback, void *callbackUserData = nullptr);
 
 	//! Deletes a file.
 	//! @param filepath the path to the file to delete
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *deleteFile(const char *filepath, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *deleteFile(const char *filepath);
+
+	//! Deletes a file.
+	//! @param filepath the path to the file to delete
+	//! @param callback callback
+	//! @param callbackUserData optional user data pointer for callback
+	void deleteFileWithCallback(const char *filepath, WorkItemCallback callback, void *callbackUserData = nullptr);
 
 	//! Creates a directory.
 	//! @param path the path to the directory to create
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *createDir(const char *path, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *createDir(const char *path);
+
+	//! Creates a directory.
+	//! @param path the path to the directory to create
+	//! @param callback callback
+	//! @param callbackUserData optional user data pointer for callback
+	void createDirWithCallback(const char *path, WorkItemCallback callback, void *callbackUserData = nullptr);
 
 	//! Deletes a directory and all contained files/directories.
 	//! @param path the path to the directory to delete
-	//! @param callback optional callback
-	//! @param callbackUserData optional user data pointer for callback
 	//! @return a WorkItem representing the work to be done
-	WorkItem *deleteDir(const char *path, WorkItemCallback callback = nullptr, void *callbackUserData = nullptr);
+	WorkItem *deleteDir(const char *path);
+
+	//! Deletes a directory and all contained files/directories.
+	//! @param path the path to the directory to delete
+	//! @param callback callback
+	//! @param callbackUserData optional user data pointer for callback
+	void deleteDirWithCallback(const char *path, WorkItemCallback callback, void *callbackUserData = nullptr);
 
 	//! Releases a WorkItem.
 	//! @param workItem the WorkItem to release.
@@ -283,8 +340,9 @@ private:
 	MountInfo* findNextMountAndPath(const char *path, const char **devicePath, const MountInfo* searchStart);
 	MountInfo* findMutableMountAndPath(const char *path, const char **devicePath, uint32_t op);
 
-	WorkItem *allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData);
-	void initWorkItem(WorkItem *item, const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData);
+	WorkItem *allocWorkItemCommon(const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData, CallbackBufferAction bufferAction);
+	void initWorkItem(WorkItem *item, const char *path, uint32_t op, WorkItemCallback callback, void *callbackUserData, CallbackBufferAction bufferAction);
+	void releaseWorkItemInternal(WorkItem *workItem);
 
 	void startProcessingThread();
 	void stopProcessingThread();

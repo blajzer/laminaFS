@@ -28,7 +28,7 @@ int test_c_api() {
 
 	// test reading
 	{
-		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/one/random.txt", false, NULL, NULL);
+		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/one/random.txt", false);
 		lfs_wait_for_work_item(readTest);
 
 		TEST(LFS_OK, lfs_work_item_get_result(readTest), "Read file /one/random.txt");
@@ -40,7 +40,7 @@ int test_c_api() {
 
 	// test writing
 	{
-		struct lfs_work_item_t *writeTest = lfs_write_file(ctx, "/two/test.txt", (char *)(testString), strlen(testString), NULL, NULL);
+		struct lfs_work_item_t *writeTest = lfs_write_file(ctx, "/two/test.txt", (char *)(testString), strlen(testString));
 		lfs_wait_for_work_item(writeTest);
 		TEST(LFS_OK, lfs_work_item_get_result(writeTest), "Write file /two/test.txt");
 		TEST(strlen(testString), lfs_work_item_get_bytes(writeTest), "Check bytes written");
@@ -50,14 +50,14 @@ int test_c_api() {
 
 	// test segment writing and reading
 	{
-		struct lfs_work_item_t *writeTest = lfs_write_file_segment(ctx, "/two/test.txt", testStringOffset, "our", 3, NULL, NULL);
+		struct lfs_work_item_t *writeTest = lfs_write_file_segment(ctx, "/two/test.txt", testStringOffset, "our", 3);
 		lfs_wait_for_work_item(writeTest);
 		TEST(LFS_OK, lfs_work_item_get_result(writeTest), "Write file segment to /two/test.txt");
 		TEST(3, lfs_work_item_get_bytes(writeTest), "Check bytes written");
 
 		lfs_release_work_item(ctx, writeTest);
 
-		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/two/test.txt", true, NULL, NULL);
+		struct lfs_work_item_t *readTest = lfs_read_file_ctx_alloc(ctx, "/two/test.txt", true);
 		lfs_wait_for_work_item(readTest);
 		TEST(LFS_OK, lfs_work_item_get_result(readTest), "Read file /two/test.txt");
 		TEST(0, strcmp((char*)lfs_work_item_get_buffer(readTest), testString2), "Compare string.");
@@ -65,7 +65,7 @@ int test_c_api() {
 
 		lfs_release_work_item(ctx, readTest);
 
-		struct lfs_work_item_t *readTest2 = lfs_read_file_segment_ctx_alloc(ctx, "/two/test.txt", testStringOffset, 3, true, NULL, NULL);
+		struct lfs_work_item_t *readTest2 = lfs_read_file_segment_ctx_alloc(ctx, "/two/test.txt", testStringOffset, 3, true);
 		lfs_wait_for_work_item(readTest2);
 		TEST(LFS_OK, lfs_work_item_get_result(readTest2), "Read file segment /two/test.txt");
 		TEST(0, strcmp((char*)lfs_work_item_get_buffer(readTest2), "our"), "Compare string segment.");
@@ -76,7 +76,7 @@ int test_c_api() {
 
 	// test file existence
 	{
-		struct lfs_work_item_t *existsTest = lfs_file_exists(ctx, "/four/four.txt", NULL, NULL);
+		struct lfs_work_item_t *existsTest = lfs_file_exists(ctx, "/four/four.txt");
 		lfs_wait_for_work_item(existsTest);
 		TEST(LFS_OK, lfs_work_item_get_result(existsTest), "Check file existence /four/four.txt");
 
@@ -85,7 +85,7 @@ int test_c_api() {
 
 	// test appending
 	{
-		struct lfs_work_item_t *appendTest = lfs_append_file(ctx, "/two/test.txt", (char *)(testString), strlen(testString), NULL, NULL);
+		struct lfs_work_item_t *appendTest = lfs_append_file(ctx, "/two/test.txt", (char *)(testString), strlen(testString));
 		lfs_wait_for_work_item(appendTest);
 		TEST(LFS_OK, lfs_work_item_get_result(appendTest), "Append file /two/test.txt");
 		TEST(strlen(testString), lfs_work_item_get_bytes(appendTest), "Check bytes appended");
@@ -95,7 +95,7 @@ int test_c_api() {
 
 	// test file size
 	{
-		struct lfs_work_item_t *sizeTest = lfs_file_size(ctx, "/two/test.txt", NULL, NULL);
+		struct lfs_work_item_t *sizeTest = lfs_file_size(ctx, "/two/test.txt");
 		lfs_wait_for_work_item(sizeTest);
 		TEST(LFS_OK, lfs_work_item_get_result(sizeTest), "Get file size /two/test.txt");
 		TEST(strlen(testString) * 2, lfs_work_item_get_bytes(sizeTest), "Check file size /two/test.txt");
@@ -105,7 +105,7 @@ int test_c_api() {
 
 	// test deleting
 	{
-		struct lfs_work_item_t *deleteTest = lfs_delete_file(ctx, "/two/test.txt", NULL, NULL);
+		struct lfs_work_item_t *deleteTest = lfs_delete_file(ctx, "/two/test.txt");
 		lfs_wait_for_work_item(deleteTest);
 		TEST(LFS_OK, lfs_work_item_get_result(deleteTest), "Delete file /two/test.txt");
 
@@ -114,10 +114,10 @@ int test_c_api() {
 
 	// test directory creation
 	{
-		struct lfs_work_item_t *dirCreateTest = lfs_create_dir(ctx, "/two/testDir", NULL, NULL);
-		struct lfs_work_item_t *dirCreateTest1 = lfs_create_dir(ctx, "/two/testDir/nested", NULL, NULL);
-		struct lfs_work_item_t *dirCreateTest2 = lfs_create_dir(ctx, "/two/testDir/nested/even_more", NULL, NULL);
-		struct lfs_work_item_t *dirCreateTest3 = lfs_create_dir(ctx, "/two/testDir/nested/even_more/so_deep", NULL, NULL);
+		struct lfs_work_item_t *dirCreateTest = lfs_create_dir(ctx, "/two/testDir");
+		struct lfs_work_item_t *dirCreateTest1 = lfs_create_dir(ctx, "/two/testDir/nested");
+		struct lfs_work_item_t *dirCreateTest2 = lfs_create_dir(ctx, "/two/testDir/nested/even_more");
+		struct lfs_work_item_t *dirCreateTest3 = lfs_create_dir(ctx, "/two/testDir/nested/even_more/so_deep");
 
 		// Work items are sequential, only need to wait on the last one
 		lfs_wait_for_work_item(dirCreateTest3);
@@ -136,11 +136,11 @@ int test_c_api() {
 	// test directory deletion
 	{
 		// write a file in the test directory first
-		struct lfs_work_item_t *writeTest = lfs_write_file(ctx, "/two/testDir/nested/even_more/test.txt", (char *)(testString), strlen(testString), NULL, NULL);
+		struct lfs_work_item_t *writeTest = lfs_write_file(ctx, "/two/testDir/nested/even_more/test.txt", (char *)(testString), strlen(testString));
 		lfs_wait_for_work_item(writeTest);
 		TEST(LFS_OK, lfs_work_item_get_result(writeTest), "Write file /two/testDir/nested/even_more/test.txt");
 
-		struct lfs_work_item_t *dirDeleteTest = lfs_delete_dir(ctx, "/two/testDir", NULL, NULL);
+		struct lfs_work_item_t *dirDeleteTest = lfs_delete_dir(ctx, "/two/testDir");
 		lfs_wait_for_work_item(dirDeleteTest);
 		TEST(LFS_OK, lfs_work_item_get_result(dirDeleteTest), "Delete dir /two/testDir");
 

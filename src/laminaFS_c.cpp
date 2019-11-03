@@ -40,52 +40,100 @@ bool lfs_release_mount(lfs_context_t ctx, lfs_mount_t mount) {
 	return CTX(ctx)->releaseMount(mount);
 }
 
-lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_allocator_t *alloc, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->readFile(filepath, nullTerminate, alloc, callback, callbackUserData);
+lfs_work_item_t *lfs_read_file(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_allocator_t *alloc) {
+	return CTX(ctx)->readFile(filepath, nullTerminate, alloc);
 }
 
-lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->readFile(filepath, nullTerminate, nullptr, callback, callbackUserData);
+void lfs_read_file_with_callback(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_allocator_t *alloc, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->readFileWithCallback(filepath, nullTerminate, callback, bufferAction, callbackUserData, alloc);
 }
 
-lfs_work_item_t *lfs_read_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->readFileSegment(filepath, offset, maxBytes, nullTerminate, alloc, callback, callbackUserData);
+lfs_work_item_t *lfs_read_file_ctx_alloc(lfs_context_t ctx, const char *filepath, bool nullTerminate) {
+	return CTX(ctx)->readFile(filepath, nullTerminate, nullptr);
 }
 
-lfs_work_item_t *lfs_read_file_segment_ctx_alloc(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->readFileSegment(filepath, offset, maxBytes, nullTerminate, nullptr, callback, callbackUserData);
+void lfs_read_file_ctx_alloc_with_callback(lfs_context_t ctx, const char *filepath, bool nullTerminate, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->readFileWithCallback(filepath, nullTerminate, callback, bufferAction, callbackUserData, nullptr);
 }
 
-lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->writeFile(filepath, buffer, bufferBytes, callback, callbackUserData);
+lfs_work_item_t *lfs_read_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc) {
+	return CTX(ctx)->readFileSegment(filepath, offset, maxBytes, nullTerminate, alloc);
 }
 
-lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->writeFileSegment(filepath, offset, buffer, bufferBytes, callback, callbackUserData);
+void lfs_read_file_segment_with_callback(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, struct lfs_allocator_t *alloc, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->readFileSegmentWithCallback(filepath, offset, maxBytes, nullTerminate, callback, bufferAction, callbackUserData, alloc);
 }
 
-lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->appendFile(filepath, buffer, bufferBytes, callback, callbackUserData);
+lfs_work_item_t *lfs_read_file_segment_ctx_alloc(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate) {
+	return CTX(ctx)->readFileSegment(filepath, offset, maxBytes, nullTerminate, nullptr);
 }
 
-lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->fileExists(filepath, callback, callbackUserData);
+void lfs_read_file_segment_ctx_alloc_with_callback(lfs_context_t ctx, const char *filepath, uint64_t offset, uint64_t maxBytes, bool nullTerminate, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->readFileSegmentWithCallback(filepath, offset, maxBytes, nullTerminate, callback, bufferAction, callbackUserData, nullptr);
 }
 
-lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->fileSize(filepath, callback, callbackUserData);
+lfs_work_item_t *lfs_write_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes) {
+	return CTX(ctx)->writeFile(filepath, buffer, bufferBytes);
 }
 
-lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->deleteFile(filepath, callback, callbackUserData);
+void lfs_write_file_with_callback(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->writeFileWithCallback(filepath, buffer, bufferBytes, callback, bufferAction, callbackUserData);
 }
 
-lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->createDir(path, callback, callbackUserData);
+lfs_work_item_t *lfs_write_file_segment(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes) {
+	return CTX(ctx)->writeFileSegment(filepath, offset, buffer, bufferBytes);
 }
 
-lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData) {
-	return CTX(ctx)->deleteDir(path, callback, callbackUserData);
+void lfs_write_file_segment_with_callback(lfs_context_t ctx, const char *filepath, uint64_t offset, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->writeFileSegmentWithCallback(filepath, offset, buffer, bufferBytes, callback, bufferAction, callbackUserData);
+}
+
+lfs_work_item_t *lfs_append_file(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes) {
+	return CTX(ctx)->appendFile(filepath, buffer, bufferBytes);
+}
+
+void lfs_append_file_with_callback(lfs_context_t ctx, const char *filepath, const void *buffer, uint64_t bufferBytes, lfs_work_item_callback_t callback, lfs_callback_buffer_action_t bufferAction, void *callbackUserData) {
+	CTX(ctx)->appendFileWithCallback(filepath, buffer, bufferBytes, callback, bufferAction, callbackUserData);
+}
+
+lfs_work_item_t *lfs_file_exists(lfs_context_t ctx, const char *filepath) {
+	return CTX(ctx)->fileExists(filepath);
+}
+
+void lfs_file_exists_with_callback(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData) {
+	CTX(ctx)->fileExistsWithCallback(filepath, callback, callbackUserData);
+}
+
+lfs_work_item_t *lfs_file_size(lfs_context_t ctx, const char *filepath) {
+	return CTX(ctx)->fileSize(filepath);
+}
+
+void lfs_file_size_with_callback(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData) {
+	CTX(ctx)->fileSizeWithCallback(filepath, callback, callbackUserData);
+}
+
+lfs_work_item_t *lfs_delete_file(lfs_context_t ctx, const char *filepath) {
+	return CTX(ctx)->deleteFile(filepath);
+}
+
+void lfs_delete_file_with_callback(lfs_context_t ctx, const char *filepath, lfs_work_item_callback_t callback, void *callbackUserData) {
+	CTX(ctx)->deleteFileWithCallback(filepath, callback, callbackUserData);
+}
+
+lfs_work_item_t *lfs_create_dir(lfs_context_t ctx, const char *path) {
+	return CTX(ctx)->createDir(path);
+}
+
+void lfs_create_dir_with_callback(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData) {
+	CTX(ctx)->createDirWithCallback(path, callback, callbackUserData);
+}
+
+lfs_work_item_t *lfs_delete_dir(lfs_context_t ctx, const char *path) {
+	return CTX(ctx)->deleteDir(path);
+}
+
+void lfs_delete_dir_with_callback(lfs_context_t ctx, const char *path, lfs_work_item_callback_t callback, void *callbackUserData) {
+	CTX(ctx)->deleteDirWithCallback(path, callback, callbackUserData);
 }
 
 lfs_error_code_t lfs_work_item_get_result(const lfs_work_item_t *workItem) {

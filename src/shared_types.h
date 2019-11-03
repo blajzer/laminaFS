@@ -7,14 +7,13 @@
 // opaque types
 struct lfs_work_item_t;
 
-enum lfs_callback_result_t {
-	LFS_DO_NOTHING,
-	LFS_FREE_WORK_ITEM,
-	LFS_FREE_WORK_ITEM_AND_BUFFER
+enum lfs_callback_buffer_action_t {
+	LFS_DO_NOT_FREE_BUFFER,
+	LFS_FREE_BUFFER,
 };
 
 // typedefs
-typedef enum lfs_callback_result_t (*lfs_work_item_callback_t)(const struct lfs_work_item_t *, void *);
+typedef void (*lfs_work_item_callback_t)(const struct lfs_work_item_t *, void *);
 
 //! Memory allocation function. Params are userdata pointer, size in bytes, and alignment in bytes.
 typedef void *(*lfs_mem_alloc_t)(void *, size_t, size_t);
